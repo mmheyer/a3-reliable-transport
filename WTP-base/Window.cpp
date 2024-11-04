@@ -15,11 +15,15 @@ void Window::removeAcknowledgedPackets(size_t count) {
     packets.pop_front();
 }
 
-// retransmit all the packets in the window (on timeout)
-void Window::retransmitAll() {
-    for (auto &packet : packets) retransmit(packet);
+// Returns a const reference to all packets currently in the window
+const std::deque<Packet>& Window::getPackets() const {
+    return packets;
 }
 
-void Window::retransmit(const Packet& packet) {
-    // TODO: define retransmission logic here
+bool Window::hasUnacknowledgedPackets() const {
+    return !packets.empty();
+}
+
+bool Window::canAddPacket() const {
+    return packets.size() < windowSize;
 }

@@ -19,15 +19,19 @@ public:
     // remove packet from the window after receiving
     void removeAcknowledgedPackets(size_t count);
 
-    // retransmit all the packets in the window (on timeout)
-    void retransmitAll();
+    // access packets in the window
+    const std::deque<Packet>& getPackets() const;
+
+    // Check if there are any unacknowledged packets in the window
+    bool hasUnacknowledgedPackets() const;
+
+    // Check if a new packet can be added to the window
+    bool canAddPacket() const;
 
 private:
     int windowSize;
     int baseSeqNum;
     std::deque<Packet> packets;
-    
-    void retransmit(const Packet& packet); // Helper to retransmit a packet
 }
 
 #endif // WINDOW_HPP
