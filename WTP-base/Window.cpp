@@ -17,7 +17,7 @@ void Window::removeAcknowledgedPackets(size_t count) {
 
 // retransmit all the packets in the window (on timeout)
 void Window::retransmitAll() {
-    // TODO: retransmit packets
+    for (auto &packet : packets) retransmit(packet);
 }
 
 void Window::retransmit(const Packet& packet) {
