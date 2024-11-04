@@ -206,7 +206,12 @@ help:
 
 # # class.o: class.cpp class.h
 
-project0.o: project0.cpp class.h
+# project0.o: project0.cpp class.h
+
+Logger.o: Logger.cpp Logger.hpp
+Packet.o: Packet.cpp Packet.hpp
+Window.o: Window.cpp Window.hpp Packet.hpp
+Sender.o: Sender.cpp Sender.hpp Logger.hpp Window.hpp
 
 ######################
 # TODO (end) #
