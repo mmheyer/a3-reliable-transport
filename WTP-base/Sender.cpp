@@ -12,32 +12,36 @@
 #include "Logger.hpp"
 #include "Window.hpp"
 #include "Packet.hpp"
-#include "helpers.hpp"
 
 #define BUFLEN 1472
 
-const size_t MAX_UDP_PAYLOAD = 1472;
-const size_t HEADER_SIZE = sizeof(PacketHeader);  // Likely 16 bytes
-const size_t CHUNK_SIZE = MAX_UDP_PAYLOAD - HEADER_SIZE;  // 1456 bytes
-
 // constructor
-Sender::Sender(std::string receiverIP, int receiverPort, int windowSize, std::string& logFile)
-    : receiverIP(receiverIP), receiverPort(receiverPort) {
+Sender::Sender(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile) {
     // setup UDP socket
     createUDPSocket(receiverPort, receiverIP);
     
     // create logger
-    logger = Logger(logFile);
+    logger = std::make_unique<Logger>(logFile);
 
     // create window
-    window = Window(windowSize);
+    window = std::make_unique<Window>(windowSize);
 }
 
 // Initiates the connection with a START packet and waits for an ACK
-void wSender::startConnection() {
-    sequenceNumber = 1 + (std::rand() % 4294967295);
+void Sender::startConnection() {
+    // sequenceNumber = 1 + (std::rand() % 4294967295);
 
-    Packet startPacket(START, seqNum = sequenceNumber);  // Sequence number for START
+    // Set up the random number generator
+    std::random_device rd;  // Seed generator
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    
+    // Define the range (0 to max value of unsigned int)
+    std::uniform_int_distribution<unsigned int> dis(1, std::numeric_limits<unsigned int>::max());
+
+    // Generate the random sequence number
+    sequenceNumber = dis(gen);
+
+    Packet startPacket(START, {}, sequenceNumber);  // Sequence number for START
     sendNewPacket(startPacket);
 
     Packet ackPacket = receiveAck();
@@ -50,7 +54,7 @@ void wSender::startConnection() {
 }
 
 // Reads the file and transmits it in chunks using DATA packets
-void wSender::sendData(const std::string& filename) {
+void Sender::sendData(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Failed to open file for reading");
@@ -59,11 +63,11 @@ void wSender::sendData(const std::string& filename) {
     std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     size_t offset = 0;
 
-    while (offset < buffer.size() || window.hasUnacknowledgedPackets()) {
+    while (offset < buffer.size() || window->hasUnacknowledgedPackets()) {
         // Send packets within the window
-        while (window.canAddPacket() && offset < buffer.size()) {
+        while (window->canAddPacket() && offset < buffer.size()) {
             size_t chunkSize = std::min(CHUNK_SIZE, buffer.size() - offset);
-            std::vector<char> chunk(buffer.begin() + offset, buffer.begin() + offset + chunkSize);
+            std::vector<char> chunk(buffer.begin() + static_cast<long>(offset), buffer.begin() + static_cast<long>(offset) + static_cast<long>(chunkSize));
 
             Packet dataPacket(DATA, chunk, sequenceNumber++);
             sendNewPacket(dataPacket);
@@ -73,8 +77,8 @@ void wSender::sendData(const std::string& filename) {
         // Receive ACKs and handle window movement
         Packet ackPacket = receiveAck();
         if (isAckValid(ackPacket)) {
-            size_t ackedPackets = ackPacket.getSeqNum() - window.getNextSeqNum() + 1;
-            window.removeAcknowledgedPackets(ackedPackets);
+            // size_t ackedPackets = ackPacket.getSeqNum() - static_cast<unsigned int>(window->getNextSeqNum()) + 1;
+            window->removeAcknowledgedPackets();
             lastAckTime = std::chrono::steady_clock::now();
         } else {
             handleTimeout();
@@ -83,8 +87,8 @@ void wSender::sendData(const std::string& filename) {
 }
 
 // Terminates the connection with an END packet
-void wSender::endConnection() {
-    Packet endPacket(END, seqNum = sequenceNumber);  // Sequence number for END should match START
+void Sender::endConnection() {
+    Packet endPacket(END, {}, sequenceNumber);  // Sequence number for END should match START
     sendNewPacket(endPacket);
 
     Packet ackPacket = receiveAck();
@@ -97,7 +101,7 @@ void wSender::endConnection() {
 }
 
 // create a UDP socket and bind the socket to the port
-int Sender::createUDPSocket(int port, std::string ip) {
+int Sender::createUDPSocket(int port, std::string& ip) {
     // Create UDP socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
@@ -110,7 +114,7 @@ int Sender::createUDPSocket(int port, std::string ip) {
     std::memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;            // IPv4
     serverAddr.sin_port = htons(port);          // Port in network byte order
-    serverAddr.sin_addr.s_addr = inet_addr(ip); // Convert IP to network byte order
+    serverAddr.sin_addr.s_addr = inet_addr(ip.c_str()); // Convert IP to network byte order
 
     // Bind socket to IP address and port
     if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
@@ -123,69 +127,69 @@ int Sender::createUDPSocket(int port, std::string ip) {
     return sockfd;
 }
 
-void wSender::sendNewPacket(const Packet& packet) {
+void Sender::sendNewPacket(const Packet& packet) {
     // Prepare the packet data in a contiguous buffer
-    size_t totalSize = sizeof(PacketHeader) + packet.header.length;
+    size_t totalSize = sizeof(PacketHeader) + packet.getLength();
     std::vector<char> buffer(totalSize);
-    std::memcpy(buffer.data(), &packet.header, sizeof(PacketHeader));
-    std::memcpy(buffer.data() + sizeof(PacketHeader), packet.data.data(), packet.header.length);
+    std::memcpy(buffer.data(), &packet.getHeader(), sizeof(PacketHeader));
+    std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
 
     // Send the packet over the socket
     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
 
     // Log the packet transmission
-    logger.logPacket(packet);
+    logger->logPacket(packet.getHeader());
 
     // Add the packet to the window for tracking since this is the first send
-    window.addPacket(packet);
+    window->addPacket(packet);
 }
 
-void wSender::retransmitPacket(const Packet& packet) {
+void Sender::retransmitPacket(const Packet& packet) {
     std::cout << "Retransmitting packet with sequence number: " << packet.getSeqNum() << std::endl;
 
     // Prepare the packet data in a contiguous buffer (same as in sendNewPacket)
-    size_t totalSize = sizeof(PacketHeader) + packet.header.length;
+    size_t totalSize = sizeof(PacketHeader) + packet.getLength();
     std::vector<char> buffer(totalSize);
-    std::memcpy(buffer.data(), &packet.header, sizeof(PacketHeader));
-    std::memcpy(buffer.data() + sizeof(PacketHeader), packet.data.data(), packet.header.length);
+    std::memcpy(buffer.data(), &packet.getHeader(), sizeof(PacketHeader));
+    std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
 
     // Send the packet over the socket
     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
 
     // Log the retransmission, but do not add to the window again
-    logger.logPacket(packet);
+    logger->logPacket(packet.getHeader());
 }
 
 // Receives an ACK and returns it as a Packet
-Packet wSender::receiveAck() {
+Packet Sender::receiveAck() {
     // Buffer to hold the incoming packet data
-    const size_t bufferSize = sizeof(PacketHeader) + MAX_DATA_SIZE;
-    char buffer[bufferSize];
+    const size_t bufferSize = sizeof(PacketHeader) + CHUNK_SIZE;
+    std::vector<char> buffer(bufferSize);
 
     // Receive the ACK packet into the buffer
     sockaddr_in senderAddr;
     socklen_t senderAddrLen = sizeof(senderAddr);
-    ssize_t receivedBytes = recvfrom(sockfd, buffer, bufferSize, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
+    ssize_t receivedBytes = recvfrom(sockfd, buffer.data(), bufferSize, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
 
     // Error handling if receiving failed
-    if (receivedBytes < sizeof(PacketHeader)) {
+    if (receivedBytes < static_cast<ssize_t>(sizeof(PacketHeader))) {
         throw std::runtime_error("Failed to receive a complete ACK packet");
     }
     
-    // create the packet
-    Packet ackPacket(buffer, bufferSize);
+    // Create the packet using the data in the buffer
+    Packet ackPacket(buffer.data(), bufferSize);
 
     return ackPacket;
 }
 
-void wSender::handleTimeout() {
+void Sender::handleTimeout() {
     auto currentTime = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastAckTime);
     if (duration.count() >= 500) {
         std::cout << "Timeout occurred. Retransmitting all packets in the window.\n";
         
         // Retransmit all packets in the window
-        for (const Packet& packet : window.getPackets()) {
+        for (const Packet& packet : window->getPackets()) {
             retransmitPacket(packet);
         }
 
@@ -195,14 +199,14 @@ void wSender::handleTimeout() {
 }
 
 // Validates the received ACK packet by checking the checksum
-bool wSender::isAckValid(const Packet& ackPacket) {
+bool Sender::isAckValid(const Packet& ackPacket) {
     // return ackPacket.getChecksum() == calculateChecksum(ackPacket);
-    return ackPacket.getChecksum() == ackPacket.calculateChecksum();
+    return ackPacket.getCheckSum() == ackPacket.calculateCheckSum();
 }
 
 int main(int argc, char* argv[]) {
     if (argc != 6) {
-        std::cerr << "Usage: ./wSender <receiver-IP> <receiver-port> <window-size> <input-file> <log>\n";
+        std::cerr << "Usage: ./Sender <receiver-IP> <receiver-port> <window-size> <input-file> <log>\n";
         return 1;
     }
 
@@ -234,8 +238,10 @@ int main(int argc, char* argv[]) {
 
     // Create Sender
     try {
-        Sender sender(receiverIP, receiverPort, windowSize, inputFile, logFile);
-        sender.run();
+        Sender sender(receiverIP, receiverPort, windowSize, logFile);
+        sender.startConnection();
+        sender.sendData(inputFile);
+        sender.endConnection();
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         std::cout << "Error: " << e.what() << "\n";
@@ -245,7 +251,7 @@ int main(int argc, char* argv[]) {
 }
 
 // // Calculates the checksum for a packet (placeholder for actual CRC implementation)
-// unsigned int wSender::calculateChecksum(const Packet& packet) {
+// unsigned int Sender::calculateChecksum(const Packet& packet) {
 //     // Use a provided CRC function or custom checksum calculation here
 //     return crc32(packet->data.data(), packet->data.size());  // Placeholder
 // }
@@ -296,7 +302,7 @@ int main(int argc, char* argv[]) {
 //     }
 // }
 
-// void wSender::sendPacket(const Packet& packet) {
+// void Sender::sendPacket(const Packet& packet) {
 //     // Calculate the total size: header + data
 //     size_t totalSize = sizeof(PacketHeader) + packet.data.size();
 
@@ -318,7 +324,7 @@ int main(int argc, char* argv[]) {
 // }
 
 // // Retransmit all packets currently in the window
-// void wSender::retransmitAll() {
+// void Sender::retransmitAll() {
 //     std::cout << "Retransmitting all packets in the window...\n";
 //     for (const Packet& packet : window.getPackets()) {
 //         retransmit(packet);

@@ -47,7 +47,7 @@ LD_RUN_PATH := /usr/um/gcc-5.1.0/lib64
 
 # TODO
 # Change EXECUTABLE to match the command name given in the project spec.
-EXECUTABLE 	= wSender
+EXECUTABLE 	= wSender-base
 
 # designate which compiler to use
 CXX			= g++
@@ -208,7 +208,7 @@ help:
 
 # project0.o: project0.cpp class.h
 
-Logger.o: Logger.cpp Logger.hpp
+Logger.o: Logger.cpp Logger.hpp Packet.hpp
 Packet.o: Packet.cpp Packet.hpp
 Window.o: Window.cpp Window.hpp Packet.hpp
 Sender.o: Sender.cpp Sender.hpp Logger.hpp Window.hpp

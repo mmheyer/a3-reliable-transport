@@ -33,9 +33,9 @@ Packet::Packet(const char* buffer, size_t bufferSize) {
 }
 
 // Getter function for seqNum
-unsigned int Packet::seqNum() {
-    return header.seqNum;
-}
+// unsigned int Packet::seqNum() {
+//     return header.seqNum;
+// }
 
 // Calculate CheckSum using starter_files
 unsigned int Packet::calculateCheckSum() const {

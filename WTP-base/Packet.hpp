@@ -27,17 +27,19 @@ public:
     Packet(const char* buffer, size_t bufferSize);
 
     // Accessor methods
+    const PacketHeader& getHeader() const { return header; }
     unsigned int getType() const { return header.type; }
     unsigned int getSeqNum() const { return header.seqNum; }
     unsigned int getLength() const { return header.length; }
     unsigned int getCheckSum() const { return header.checkSum; }
+    const std::vector<char>& getData() const { return data; }
+
+    // Checksum calculation method
+    unsigned int calculateCheckSum() const;
 
 private:
     PacketHeader header;
     std::vector<char> data;
-
-    // Checksum calculation method
-    unsigned int calculateCheckSum() const;
 };
 
 #endif

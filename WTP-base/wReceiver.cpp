@@ -40,8 +40,8 @@ class Packet {
             header.length = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 28 + 8)));
             header.checkSum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 28 + 12)));
             
-            data.resize( s - 20 - sizeof(header));
-            memcpy(data.data(), buffer + 28,  s - 20 - sizeof(header));
+            data.resize( static_cast<unsigned long>(s) - 20 - sizeof(header));
+            memcpy(data.data(), buffer + 28,  static_cast<unsigned long>(s) - 20 - sizeof(header));
 
         };
 };
@@ -83,10 +83,11 @@ WReceiver::WReceiver(int port, int window_size, string output_dir, string log_fi
         addr.sin_port = htons(static_cast<uint16_t>(port));
 
         //bind to port 
-        if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-            cout << "Bind failed" << endl;
-            exit(1);
-        }
+        // if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        //     cout << "Bind failed" << endl;
+        //     exit(1);
+        // }
+        bind(sockfd, (struct sockaddr *) &addr, sizeof(addr));
 }
 
 void WReceiver::startReceiving(){

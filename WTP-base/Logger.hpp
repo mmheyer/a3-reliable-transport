@@ -3,6 +3,7 @@
 
 #include <string>
 #include <fstream>
+#include "Packet.hpp"
 
 class Logger {
 private:
@@ -16,7 +17,7 @@ public:
     ~Logger();
     
     // Logs type, seqNum, length, and checkSum of packet header
-    bool logPacket(packetHeader& header);
+    bool logPacket(const PacketHeader& header);
 };
 
 #endif  // LOGGER_HPP

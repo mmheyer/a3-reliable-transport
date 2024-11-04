@@ -1,8 +1,8 @@
 #include "Window.hpp"
 
 // get seqNum of packet next to be ACKed
-int Window::getNextSeqNum() {
-    return window.top().getSeqNum();
+unsigned int Window::getNextSeqNum() const {
+    return packets.front().getSeqNum();
 }
 
 // add packet to the window
@@ -11,7 +11,7 @@ void Window::addPacket(const Packet& packet) {
 }
 
 // remove packet from the window after receiving
-void Window::removeAcknowledgedPackets(size_t count) {
+void Window::removeAcknowledgedPackets() {
     packets.pop_front();
 }
 
@@ -25,5 +25,5 @@ bool Window::hasUnacknowledgedPackets() const {
 }
 
 bool Window::canAddPacket() const {
-    return packets.size() < windowSize;
+    return packets.size() < static_cast<unsigned long>(windowSize);
 }

@@ -8,16 +8,16 @@
 class Window {
 public:
     // constructor
-    Window(int windowSize) : windowSize(windowSize), baseSeqNum(0) {};
+    Window(int windowSize) : windowSize(windowSize) {};
 
     // Get seqNum of the first packet in the window waiting for an ACK
-    int getNextSeqNum() const;
+    unsigned int getNextSeqNum() const;
 
     // add packet to the window
     void addPacket(const Packet& packet);
 
     // remove packet from the window after receiving
-    void removeAcknowledgedPackets(size_t count);
+    void removeAcknowledgedPackets();
 
     // access packets in the window
     const std::deque<Packet>& getPackets() const;
@@ -30,8 +30,7 @@ public:
 
 private:
     int windowSize;
-    int baseSeqNum;
     std::deque<Packet> packets;
-}
+};
 
 #endif // WINDOW_HPP
