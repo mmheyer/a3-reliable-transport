@@ -6,7 +6,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <map>
 #include "crc32.h"
+
 using namespace std; 
 
 
@@ -92,6 +94,10 @@ void WReceiver::startReceiving(){
     int next_seq = 0; 
     int counter = 0; 
     ofstream output_file;
+    int startACK = 0; 
+    Packet ackPacket;
+
+    map<int, Packet> receivedPackets; //seq num, packet info
     while(true){
         char buffer[1500]; //8 byte udp header, 20 byte tcp header, 1472 data
 
@@ -101,7 +107,7 @@ void WReceiver::startReceiving(){
             continue;
         }
         if(recv_len > 28){
-            Packet p(buffer, recv_len); 
+            Packet p(buffer, recv_len); //received packet
 
             //check checksum 
            
@@ -113,8 +119,11 @@ void WReceiver::startReceiving(){
                 } else{
                     connection = true; 
                     next_seq = 0; 
-                    Packet ackPacket;
+
+                    //ACK FOR START
+                    
                     ackPacket.header.type = 3; // 3 = ack
+                    startACK = p.header.seqNum;
                     ackPacket.header.seqNum = p.header.seqNum; //ack with start packets seqnum
 
                     ssize_t bytes_sent = sendto(sockfd, &p, sizeof(p), 0, (struct sockaddr*)&addr, sizeof(addr));
@@ -130,6 +139,18 @@ void WReceiver::startReceiving(){
             } else if(p.header.type == 1){ //END
                 //end
                 connection = false;
+
+                //ACK
+                ackPacket.header.type = 3; // 3 = ack
+                ackPacket.header.seqNum = startACK; //ack with start packets seqnum
+
+                ssize_t bytes_sent = sendto(sockfd, &p, sizeof(p), 0, (struct sockaddr*)&addr, sizeof(addr));
+                if (bytes_sent < 0) {
+                    cout << "Failed to send packet" << endl;
+                } else {
+                    std::cout << "Sent packet: Type=" << p.header.type << ", SeqNum=" << p.header.seqNum << std::endl;
+                }
+
                 output_file.close();
                 //TODO: END
             } else if(p.header.type == 2){ //DATA
@@ -137,6 +158,29 @@ void WReceiver::startReceiving(){
                  int calculated_c = crc32(buffer+28, recv_len -28);
                  if(c == calculated_c){
                     //only do stuff if valid crc
+                    if(next_seq + window_size > p.header.seqNum){  //only handles things in windowsize
+                        //if packet has correct crc and is in window size-> add to map
+                        receivedPackets[p.header.seqNum] = p;
+    
+                        if(p.header.seqNum == next_seq){
+                            while(receivedPackets.find(next_seq) != receivedPackets.end()){
+                                //iterates through map
+                                Packet order = receivedPackets[next_seq];
+                                receivedPackets.erase(next_seq);
+                                //TODO write to output file
+                                next_seq++;
+                            }
+                        }
+                       
+                        ackPacket.header.type = 3; // 3 = ack
+                        ackPacket.header.seqNum = next_seq;
+                        ssize_t bytes_sent = sendto(sockfd, &p, sizeof(p), 0, (struct sockaddr*)&addr, sizeof(addr));
+                        if (bytes_sent < 0) {
+                            cout << "Failed to send packet" << endl;
+                        } else {
+                            std::cout << "Sent packet: Type=" << p.header.type << ", SeqNum=" << p.header.seqNum << std::endl;
+                        }
+                    }
 
                     //TODO output dir + log
                     next_seq++;
