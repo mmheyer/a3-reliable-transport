@@ -1,20 +1,24 @@
 #include <iostream>
+#include <fstream>
+#include <vector>
 #include <cstring>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdexcept>
+#include "crc32.h"
 
-const int PORT = 8888; // Port to listen on, adjust as necessary
-const size_t MAX_BUFFER_SIZE = 1472; // Max size for UDP packet
+#define PORT 8888
+#define WINDOW_SIZE 5
+#define FILE_PREFIX "FILE-"
 
 struct PacketHeader {
-    unsigned int type;
-    unsigned int seqNum;
-    unsigned int length;
-    unsigned int checkSum;
+    unsigned int type;     // 0: START; 1: END; 2: DATA; 3: ACK
+    unsigned int seqNum;   // Sequence number
+    unsigned int length;   // Length of data; 0 for ACK packets
+    unsigned int checkSum; // 32-bit CRC checksum
 };
 
-// Packet types
 enum PacketType {
     START = 0,
     END = 1,
@@ -22,49 +26,60 @@ enum PacketType {
     ACK = 3
 };
 
-void sendAck(int sockfd, sockaddr_in& clientAddr, socklen_t clientAddrLen, unsigned int seqNum) {
-    PacketHeader ackHeader;
-    ackHeader.type = htonl(ACK);          // Packet type: ACK
-    ackHeader.seqNum = htonl(seqNum);     // Sequence number from the received packet
-    ackHeader.length = 0;                 // ACK packet has no data
-    ackHeader.checkSum = 0;               // No checksum for this simple example
-
-    sendto(sockfd, &ackHeader, sizeof(ackHeader), 0, (struct sockaddr*)&clientAddr, clientAddrLen);
-    std::cout << "Sent ACK for seqNum: " << seqNum << std::endl;
+// Calculate CheckSum using starter_files
+unsigned int calculateChecksum(const std::vector<char>& data) {
+    return crc32(data.data(), data.size());
 }
 
-int main() {
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        std::cerr << "Error creating socket" << std::endl;
-        return 1;
+// Test receiver class to handle one connection at a time
+class TestReceiver {
+public:
+    TestReceiver();
+    void run();
+
+private:
+    int sockfd;
+    struct sockaddr_in si_me, si_other;
+    socklen_t slen = sizeof(si_other);
+    int fileCounter = 0;
+    int expectedSeqNum = 0;
+    std::ofstream outFile;
+    std::string generateFileName();
+
+    void sendAck(int seqNum);
+    void processPacket(const PacketHeader& header, const std::vector<char>& data);
+    bool verifyChecksum(const PacketHeader& header, const std::vector<char>& data);
+};
+
+TestReceiver::TestReceiver() {
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+        perror("socket creation failed");
+        exit(1);
     }
 
-    sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(PORT);
+    memset((char*)&si_me, 0, sizeof(si_me));
+    si_me.sin_family = AF_INET;
+    si_me.sin_port = htons(PORT);
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        std::cerr << "Error binding socket" << std::endl;
+    if (bind(sockfd, (struct sockaddr*)&si_me, sizeof(si_me)) == -1) {
+        perror("bind failed");
         close(sockfd);
-        return 1;
+        exit(1);
     }
 
-    std::cout << "Receiver listening on port " << PORT << "..." << std::endl;
+    std::cout << "Receiver is listening on port " << PORT << std::endl;
+}
 
+void TestReceiver::run() {
+    char buffer[1472];
     while (true) {
-        char buffer[MAX_BUFFER_SIZE];
-        sockaddr_in clientAddr;
-        socklen_t clientAddrLen = sizeof(clientAddr);
-        ssize_t receivedBytes = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr*)&clientAddr, &clientAddrLen);
-
-        if (receivedBytes < static_cast<ssize_t>(sizeof(PacketHeader))) {
+        ssize_t recv_len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&si_other, &slen);
+        if (recv_len < static_cast<int>(sizeof(PacketHeader))) {
             std::cerr << "Received packet is too small" << std::endl;
             continue;
         }
 
-        // Parse the packet header
         PacketHeader header;
         std::memcpy(&header, buffer, sizeof(PacketHeader));
         header.type = ntohl(header.type);
@@ -72,25 +87,90 @@ int main() {
         header.length = ntohl(header.length);
         header.checkSum = ntohl(header.checkSum);
 
-        // Print received packet details
-        std::cout << "Received packet - Type: " << header.type << ", SeqNum: " << header.seqNum
-                  << ", Length: " << header.length << ", Checksum: " << header.checkSum << std::endl;
+        std::vector<char> data(buffer + sizeof(PacketHeader), buffer + recv_len);
+        processPacket(header, data);
+    }
+}
 
-        // Handle different packet types
-        if (header.type == START) {
-            std::cout << "Received START packet" << std::endl;
-            sendAck(sockfd, clientAddr, clientAddrLen, header.seqNum);
-        } else if (header.type == DATA) {
-            std::cout << "Received DATA packet" << std::endl;
-            sendAck(sockfd, clientAddr, clientAddrLen, header.seqNum); // Acknowledge the data packet
-        } else if (header.type == END) {
-            std::cout << "Received END packet, closing connection" << std::endl;
-            sendAck(sockfd, clientAddr, clientAddrLen, header.seqNum);
-            break; // Exit the loop, ending the test
+void TestReceiver::processPacket(const PacketHeader& header, const std::vector<char>& data) {
+    if (header.type == START) {
+        if (outFile.is_open()) {
+            std::cerr << "Ignored START packet while in an existing connection" << std::endl;
+            return;
         }
+        outFile.open(generateFileName(), std::ios::binary);
+        expectedSeqNum = 0;
+        std::cout << "Received START packet. Opening file for new connection." << std::endl;
+        sendAck(static_cast<int>(header.seqNum));  // Send ACK with received START seqNum
+        return;
     }
 
-    close(sockfd);
-    std::cout << "Receiver closed." << std::endl;
+    if (header.type == END) {
+        if (!outFile.is_open()) {
+            std::cerr << "Received END packet with no open file" << std::endl;
+            return;
+        }
+        outFile.close();
+        expectedSeqNum = 0;
+        fileCounter++;
+        std::cout << "Received END packet. Closing file and resetting for new connection." << std::endl;
+        sendAck(static_cast<int>(header.seqNum));  // Send ACK with received END seqNum
+        return;
+    }
+
+    if (header.type == DATA) {
+        if (!outFile.is_open()) {
+            std::cerr << "DATA packet received outside an active connection" << std::endl;
+            return;
+        }
+
+        if (header.seqNum >= static_cast<const unsigned int>(expectedSeqNum + WINDOW_SIZE)) {
+            std::cerr << "Packet outside window, dropping: seqNum = " << header.seqNum << std::endl;
+            return;
+        }
+
+        if (!verifyChecksum(header, data)) {
+            std::cerr << "Checksum mismatch, dropping packet: seqNum = " << header.seqNum << std::endl;
+            return;
+        }
+
+        if (header.seqNum == static_cast<const unsigned int>(expectedSeqNum)) {
+            outFile.write(data.data(), static_cast<long>(data.size()));
+            expectedSeqNum++;
+            std::cout << "Received in-order DATA packet: seqNum = " << header.seqNum << std::endl;
+
+            sendAck(expectedSeqNum);  // Cumulative ACK with next expected seqNum
+        } else {
+            std::cerr << "Out-of-order DATA packet: seqNum = " << header.seqNum << std::endl;
+            sendAck(expectedSeqNum);  // Send ACK with current expected seqNum
+        }
+    }
+}
+
+bool TestReceiver::verifyChecksum(const PacketHeader& header, const std::vector<char>& data) {
+    return header.checkSum == calculateChecksum(data);
+}
+
+void TestReceiver::sendAck(int seqNum) {
+    PacketHeader ackHeader;
+    ackHeader.type = htonl(ACK);
+    ackHeader.seqNum = htonl(seqNum);
+    ackHeader.length = 0;
+    ackHeader.checkSum = 0;
+
+    if (sendto(sockfd, &ackHeader, sizeof(ackHeader), 0, (struct sockaddr*)&si_other, slen) == -1) {
+        perror("sendto failed");
+    } else {
+        std::cout << "Sent ACK for seqNum = " << seqNum << std::endl;
+    }
+}
+
+std::string TestReceiver::generateFileName() {
+    return FILE_PREFIX + std::to_string(fileCounter) + ".out";
+}
+
+int main() {
+    TestReceiver receiver;
+    receiver.run();
     return 0;
 }

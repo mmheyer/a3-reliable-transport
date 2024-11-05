@@ -37,6 +37,9 @@ public:
     // Checksum calculation method
     unsigned int calculateCheckSum() const;
 
+    // Convert header to network byte order for sending
+    PacketHeader getNetworkOrderHeader() const;
+
 private:
     PacketHeader header;
     std::vector<char> data;

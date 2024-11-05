@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/wSender-base",
-            "args": ["127.0.0.1", "8888", "3", "input.txt", "log.txt"],
+            "args": ["127.0.0.1", "8888", "5", "input.txt", "log.txt"],
             "env": {
                 "ASAN_OPTIONS": "abort_on_error=1:detect_leaks=0"
             },

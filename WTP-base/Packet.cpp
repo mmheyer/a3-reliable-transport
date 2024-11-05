@@ -4,10 +4,10 @@
 
 // Constructor for creating packets to send
 Packet::Packet(unsigned int type, const std::vector<char>& data, unsigned int seqNum) : data(data) {
-    header.type = htonl(type);                 // Convert type to network byte order
-    header.seqNum = htonl(seqNum);             // Convert sequence number to network byte order
-    header.length = htonl(data.size());        // Convert data length to network byte order
-    header.checkSum = htonl(calculateCheckSum());  // Convert checksum to network byte order
+    header.type = type;
+    header.seqNum = seqNum;
+    header.length = static_cast<unsigned int>(data.size());
+    header.checkSum = calculateCheckSum();
 }
 
 #include "Packet.hpp"
@@ -31,23 +31,16 @@ Packet::Packet(const char* buffer, size_t bufferSize) {
     }
 }
 
-// Getter function for seqNum
-// unsigned int Packet::seqNum() {
-//     return header.seqNum;
-// }
-
 // Calculate CheckSum using starter_files
 unsigned int Packet::calculateCheckSum() const {
     return crc32(data.data(), data.size());
 }
 
-// Constructor for Packet
-// TODO Need to add htonl, need to make room for header in data vector
-// Packet::Packet(unsigned int type, std::vector<char>& data = {}, unsigned int seqNum = 0)
-//     : data(data)
-// {
-//     header.type = type;
-//     header.seqNum = seqNum;
-//     header.length = data.size();
-//     header.checksum = calculateCheckSum(data);
-// }
+PacketHeader Packet::getNetworkOrderHeader() const {
+    PacketHeader networkOrderHeader;
+    networkOrderHeader.type = htonl(header.type);
+    networkOrderHeader.seqNum = htonl(header.seqNum);
+    networkOrderHeader.length = htonl(header.length);
+    networkOrderHeader.checkSum = htonl(header.checkSum);
+    return networkOrderHeader;
+}

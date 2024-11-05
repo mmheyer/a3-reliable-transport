@@ -60,6 +60,8 @@ void Sender::startConnection() {
         std::cerr << "Invalid ACK for START packet. Retrying...\n";
         handleTimeout();
     } else {
+        // remove start packet from the window
+        window->removeAcknowledgedPackets();
         std::cout << "Connection started successfully.\n";
     }
 }
@@ -154,10 +156,11 @@ void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
 
 void Sender::sendNewPacket(const Packet& packet) {
     // Prepare the packet data in a contiguous buffer
+    PacketHeader networkHeader = packet.getNetworkOrderHeader();
     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
     std::vector<char> buffer(totalSize);
-    std::cout << "size of packet header = " << sizeof(PacketHeader) << std::endl;
-    std::memcpy(buffer.data(), &packet.getHeader(), sizeof(PacketHeader));
+
+    std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
 
     // Send the packet over the socket
@@ -174,9 +177,11 @@ void Sender::retransmitPacket(const Packet& packet) {
     std::cout << "Retransmitting packet with sequence number: " << packet.getSeqNum() << std::endl;
 
     // Prepare the packet data in a contiguous buffer (same as in sendNewPacket)
+    PacketHeader networkHeader = packet.getNetworkOrderHeader();
     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
     std::vector<char> buffer(totalSize);
-    std::memcpy(buffer.data(), &packet.getHeader(), sizeof(PacketHeader));
+
+    std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
 
     // Send the packet over the socket
@@ -226,8 +231,6 @@ void Sender::handleTimeout() {
 
 // Validates the received ACK packet by checking the checksum
 bool Sender::isAckValid(const Packet& ackPacket) {
-    // return ackPacket.getChecksum() == calculateChecksum(ackPacket);
-    std::cout << "calculated checksum = " << ackPacket.calculateCheckSum() << std::endl;
     return ackPacket.getCheckSum() == ackPacket.calculateCheckSum();
 }
 

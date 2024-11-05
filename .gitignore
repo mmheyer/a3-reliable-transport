@@ -2,3 +2,4 @@
 wSender
 *.vscode
 log.txt
+FILE-*.out
