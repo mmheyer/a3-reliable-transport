@@ -1,2 +1,4 @@
 *.o
 wSender
+*.vscode
+log.txt
