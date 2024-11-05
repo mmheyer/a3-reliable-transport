@@ -185,19 +185,8 @@ void WReceiver::startReceiving(){
             //TODO: END
         } else if(p.header.type == 2){ //DATA
             cout << "[Data Debug] DATA Received" << endl;
-
-             for (ssize_t i = 0; i < recv_len; ++i) {
-                if (std::isprint(buffer[i])) {
-                    std::cout << (char)buffer[i];  // Print printable characters
-                } else {
-                    std::cout << ".";  // Print "." for non-printable characters
-                }
-            }
-            std::cout << std::endl;
-
             int c = p.header.checkSum; 
-            int calculated_c = crc32(buffer, recv_len);
-            cout << c << "*" << calculated_c << endl; 
+            int calculated_c = crc32(p.data.data(), p.data.size());
             if(c == calculated_c){
             //only do stuff if valid crc
             if(next_seq + window_size > int(p.header.seqNum)){  //only handles things in windowsize
