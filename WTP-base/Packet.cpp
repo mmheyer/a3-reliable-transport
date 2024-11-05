@@ -3,8 +3,7 @@
 #include <vector>
 
 // Constructor for creating packets to send
-Packet::Packet(unsigned int type, const std::vector<char>& data, unsigned int seqNum)
-    : data(data) {
+Packet::Packet(unsigned int type, const std::vector<char>& data, unsigned int seqNum) : data(data) {
     header.type = htonl(type);                 // Convert type to network byte order
     header.seqNum = htonl(seqNum);             // Convert sequence number to network byte order
     header.length = htonl(data.size());        // Convert data length to network byte order

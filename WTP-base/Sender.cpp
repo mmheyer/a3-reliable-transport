@@ -15,21 +15,31 @@
 
 #define BUFLEN 1472
 
+const int PORT = 9000; // Port to listen on, adjust as necessary
+const size_t CHUNK_SIZE = 1456;
+
 // constructor
-Sender::Sender(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile) {
+Sender::Sender(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile)
+    : sockfd(0), randSeqNum(0) {
     // setup UDP socket
     createUDPSocket(receiverPort, receiverIP);
     
     // create logger
-    logger = std::make_unique<Logger>(logFile);
+    logger = new Logger(logFile);
 
     // create window
-    window = std::make_unique<Window>(windowSize);
+    window = new Window(windowSize);
+}
+
+// destructor
+Sender::~Sender() {
+    delete logger;
+    delete window;
 }
 
 // Initiates the connection with a START packet and waits for an ACK
 void Sender::startConnection() {
-    // sequenceNumber = 1 + (std::rand() % 4294967295);
+    // randSeqNum = 1 + (std::rand() % 4294967295);
 
     // Set up the random number generator
     std::random_device rd;  // Seed generator
@@ -39,13 +49,14 @@ void Sender::startConnection() {
     std::uniform_int_distribution<unsigned int> dis(1, std::numeric_limits<unsigned int>::max());
 
     // Generate the random sequence number
-    sequenceNumber = dis(gen);
+    randSeqNum = dis(gen);
 
-    Packet startPacket(START, {}, sequenceNumber);  // Sequence number for START
+    Packet startPacket(START, {}, randSeqNum);  // Sequence number for START
     sendNewPacket(startPacket);
 
     Packet ackPacket = receiveAck();
-    if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
+    // if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
+    if (!isAckValid(ackPacket)) {
         std::cerr << "Invalid ACK for START packet. Retrying...\n";
         handleTimeout();
     } else {
@@ -62,6 +73,7 @@ void Sender::sendData(const std::string& filename) {
 
     std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     size_t offset = 0;
+    unsigned int dataSeqNum = 0;
 
     while (offset < buffer.size() || window->hasUnacknowledgedPackets()) {
         // Send packets within the window
@@ -69,7 +81,7 @@ void Sender::sendData(const std::string& filename) {
             size_t chunkSize = std::min(CHUNK_SIZE, buffer.size() - offset);
             std::vector<char> chunk(buffer.begin() + static_cast<long>(offset), buffer.begin() + static_cast<long>(offset) + static_cast<long>(chunkSize));
 
-            Packet dataPacket(DATA, chunk, sequenceNumber++);
+            Packet dataPacket(DATA, chunk, dataSeqNum++);
             sendNewPacket(dataPacket);
             offset += chunkSize;
         }
@@ -88,7 +100,7 @@ void Sender::sendData(const std::string& filename) {
 
 // Terminates the connection with an END packet
 void Sender::endConnection() {
-    Packet endPacket(END, {}, sequenceNumber);  // Sequence number for END should match START
+    Packet endPacket(END, {}, randSeqNum);  // Sequence number for END should match START
     sendNewPacket(endPacket);
 
     Packet ackPacket = receiveAck();
@@ -101,36 +113,50 @@ void Sender::endConnection() {
 }
 
 // create a UDP socket and bind the socket to the port
-int Sender::createUDPSocket(int port, std::string& ip) {
-    // Create UDP socket
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        std::cerr << "Failed to create socket" << std::endl;
-        return -1;
+void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
+    struct sockaddr_in si_me;
+
+    // Create a UDP socket
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+        perror("socket creation failed");
+        exit(1);
     }
 
-    // Define the server address structure
-    struct sockaddr_in serverAddr;
-    std::memset(&serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family = AF_INET;            // IPv4
-    serverAddr.sin_port = htons(port);          // Port in network byte order
-    serverAddr.sin_addr.s_addr = inet_addr(ip.c_str()); // Convert IP to network byte order
+    // Zero out the data structure
+    memset((char *)&si_me, 0, sizeof(si_me));
 
-    // Bind socket to IP address and port
-    if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        std::cerr << "Failed to bind socket" << std::endl;
+    // Set necessary parameters
+    si_me.sin_family = AF_INET;
+    si_me.sin_port = htons(PORT);
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    // Bind socket to port (if necessary)
+    if (bind(sockfd, (struct sockaddr *)&si_me, sizeof(si_me)) == -1) {
+        perror("bind failed");
         close(sockfd);
-        return -1;
+        exit(1);
     }
+    std::cout << "UDP socket created and bound to port " << PORT << std::endl;
 
-    std::cout << "[DEBUG] UDP socket created and bound to IP: " << ip << ", Port: " << port << std::endl;
-    return sockfd;
+    // Zero out the receiver address structure
+    memset(&receiverAddr, 0, sizeof(receiverAddr));
+
+    // Set up receiver address
+    receiverAddr.sin_family = AF_INET;
+    receiverAddr.sin_port = htons(receiverPort);
+
+    // Convert the receiver IP to binary form and store in receiverAddr
+    if (inet_pton(AF_INET, receiverIP.c_str(), &receiverAddr.sin_addr) <= 0) {
+        close(sockfd);
+        throw std::runtime_error("Invalid receiver IP address");
+    }
 }
 
 void Sender::sendNewPacket(const Packet& packet) {
     // Prepare the packet data in a contiguous buffer
     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
     std::vector<char> buffer(totalSize);
+    std::cout << "size of packet header = " << sizeof(PacketHeader) << std::endl;
     std::memcpy(buffer.data(), &packet.getHeader(), sizeof(PacketHeader));
     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
 
@@ -201,6 +227,7 @@ void Sender::handleTimeout() {
 // Validates the received ACK packet by checking the checksum
 bool Sender::isAckValid(const Packet& ackPacket) {
     // return ackPacket.getChecksum() == calculateChecksum(ackPacket);
+    std::cout << "calculated checksum = " << ackPacket.calculateCheckSum() << std::endl;
     return ackPacket.getCheckSum() == ackPacket.calculateCheckSum();
 }
 
@@ -233,8 +260,6 @@ int main(int argc, char* argv[]) {
               << "Window Size: " << windowSize << "\n"
               << "Input File: " << inputFile << "\n"
               << "Log File: " << logFile << "\n";
-
-    // TODO: Further implementation here
 
     // Create Sender
     try {
