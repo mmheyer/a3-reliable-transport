@@ -15,16 +15,14 @@ using namespace std;
 struct packetHeader {
         unsigned int type;      // 0: START; 1: END; 2: DATA; 3: ACK 
         unsigned int seqNum;    // Sequence number
-        unsigned int length;    // Length of data; 0 for ACK, START and END                                                       END packets 
+        unsigned int length;    // Length of data; 0 for ACK, START and END packets 
         unsigned int checkSum;  // 32-bit CRC	
 };
 
 class Packet {
-	private:
+    public:
 		vector<char> data;
-		
-
-	public:
+	
     	packetHeader header;
         Packet(){
             header.checkSum = 0; 
@@ -35,15 +33,31 @@ class Packet {
 
 		Packet(const char*buffer, ssize_t s){
             //initialize packet info and packet header info
-            header.type = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 28)));
-            header.seqNum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 28 + 4)));
-            header.length = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 28 + 8)));
-            header.checkSum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 28 + 12)));
+            header.type = ntohl(*(reinterpret_cast<const unsigned int*>(buffer)));
+            header.seqNum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 4)));
+            header.length = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 8)));
+            header.checkSum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 12)));
             
-            data.resize( static_cast<unsigned long>(s) - 20 - sizeof(header));
-            memcpy(data.data(), buffer + 28,  static_cast<unsigned long>(s) - 20 - sizeof(header));
+            data.resize( s - sizeof(header));
+            memcpy(data.data(), buffer + sizeof(header),  s - sizeof(header));
 
         };
+
+        void toBuffer(char* buffer) const {
+            memcpy(buffer, &header.type, sizeof(header.type));
+            memcpy(buffer + 4, &header.seqNum, sizeof(header.seqNum));
+            memcpy(buffer + 8, &header.length, sizeof(header.length));
+            memcpy(buffer + 12, &header.checkSum, sizeof(header.checkSum));
+           
+        }
+        void print() const {
+            std::cout << "Packet Info:\n";
+            std::cout << "  Type: " << header.type << "\n";
+            std::cout << "  Sequence Number: " << header.seqNum << "\n";
+            std::cout << "  Length: " << header.length << "\n";
+            std::cout << "  Checksum: " << header.checkSum << "\n";
+            
+        }
 };
  
 class WReceiver { 
@@ -76,6 +90,7 @@ WReceiver::WReceiver(int port, int window_size, string output_dir, string log_fi
             cout << "Socket Creation Error" << endl;
             exit(1);
         }
+        cout << "Socket created" << endl;
 
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET; 
@@ -83,12 +98,14 @@ WReceiver::WReceiver(int port, int window_size, string output_dir, string log_fi
         addr.sin_port = htons(static_cast<uint16_t>(port));
 
         //bind to port 
-        // if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-        //     cout << "Bind failed" << endl;
-        //     exit(1);
-        // }
-        bind(sockfd, (struct sockaddr *) &addr, sizeof(addr));
+        if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+            cout << "Bind failed" << endl;
+            exit(1);
+        }
+        cout << "Bound to port" << endl;
 }
+
+
 
 void WReceiver::startReceiving(){
     bool connection = false; 
@@ -97,105 +114,124 @@ void WReceiver::startReceiving(){
     ofstream output_file;
     int startACK = 0; 
     Packet ackPacket;
-
+    cout << "[Debug] Start receiving" << endl;
     map<int, Packet> receivedPackets; //seq num, packet info
     while(true){
         char buffer[1500]; //8 byte udp header, 20 byte tcp header, 1472 data
-
+        
         ssize_t recv_len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&client, &caddr_len);
         if (recv_len < 0) {
-            cerr << "Recv error" << endl;
+            cout << "ERROR: Recv error" << endl;
             continue;
         }
-        if(recv_len > 28){
-            Packet p(buffer, recv_len); //received packet
 
-            //check checksum 
-           
-            //only handles packet if checksum is right, does nothing if it was wrong
-            if(p.header.type == 0){ //START
-                //start stuff
-                if(connection){ //drops packet
-                    continue;
-                } else{
-                    connection = true; 
-                    next_seq = 0; 
+        Packet p(buffer, recv_len); //received packet
+        p.print(); 
+        cout << "[Debug] initialized packet" << endl;
 
-                    //ACK FOR START
-                    
-                    ackPacket.header.type = 3; // 3 = ack
-                    startACK = p.header.seqNum;
-                    ackPacket.header.seqNum = p.header.seqNum; //ack with start packets seqnum
+        //check checksum 
+        char ACK[1500];
 
-                    ssize_t bytes_sent = sendto(sockfd, &p, sizeof(p), 0, (struct sockaddr*)&addr, sizeof(addr));
-                    if (bytes_sent < 0) {
-                        cout << "Failed to send packet" << endl;
-                    } else {
-                        std::cout << "Sent packet: Type=" << p.header.type << ", SeqNum=" << p.header.seqNum << std::endl;
-                    }
-                    //TODO: log
-                    output_file.open(output_dir + "/FILE-" + std::to_string(counter++) + ".out", std::ios::binary);
-                    
+        //only handles packet if checksum is right, does nothing if it was wrong
+        if(p.header.type == 0){ //START
+            cout << "[Start Debug] START received" << endl;
+            //start stuff
+            if(connection){ //drops packet
+                cout << "Packet dropped due to existing connection/transfer" << endl;
+                continue;
+            } else{
+                connection = true; 
+                next_seq = 0; 
+
+                //ACK FOR START
+                
+                ackPacket.header.type = htonl(3); // 3 = ack
+                startACK = htonl(p.header.seqNum);
+                ackPacket.header.seqNum = p.header.seqNum; //ack with start packets seqnum
+
+                ackPacket.toBuffer(ACK);
+                ackPacket.print(); 
+                // Send the packet
+                ssize_t bytes_sent = sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
+                if (bytes_sent < 0) {
+                    std::cout << "ERROR: Failed to send the START ACK\n";
+                } else {
+                    std::cout << "START ACK sent successfully\n";
                 }
-            } else if(p.header.type == 1){ //END
-                //end
-                connection = false;
+               
+                //TODO: log
+                output_file.open(output_dir + "/FILE-" + std::to_string(counter++) + ".out", std::ios::binary);
+                
+            }
+        } else if(p.header.type == 1){ //END
+            cout << "[End Debug] END received" << endl;
+            //end
+            connection = false;
 
-                //ACK
-                ackPacket.header.type = 3; // 3 = ack
-                ackPacket.header.seqNum = startACK; //ack with start packets seqnum
+            //ACK
+            ackPacket.header.type = htonl(3); // 3 = ack
+            ackPacket.header.seqNum = htonl(startACK); //ack with start packets seqnum
+            ackPacket.toBuffer(ACK);
+            ackPacket.print(); 
 
-                ssize_t bytes_sent = sendto(sockfd, &p, sizeof(p), 0, (struct sockaddr*)&addr, sizeof(addr));
+            ssize_t bytes_sent =  sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
+            if (bytes_sent < 0) {
+                cout << "ERROR: Failed to send packet" << endl;
+            } else {
+                std::cout << "END ACK sent successfully\n";
+            }
+
+            output_file.close();
+            //TODO: END
+        } else if(p.header.type == 2){ //DATA
+            cout << "[Data Debug] DATA Received" << endl;
+
+             for (ssize_t i = 0; i < recv_len; ++i) {
+                if (std::isprint(buffer[i])) {
+                    std::cout << (char)buffer[i];  // Print printable characters
+                } else {
+                    std::cout << ".";  // Print "." for non-printable characters
+                }
+            }
+            std::cout << std::endl;
+
+            int c = p.header.checkSum; 
+            int calculated_c = crc32(buffer, recv_len);
+            cout << c << "*" << calculated_c << endl; 
+            if(c == calculated_c){
+            //only do stuff if valid crc
+            if(next_seq + window_size > int(p.header.seqNum)){  //only handles things in windowsize
+                //if packet has correct crc and is in window size-> add to map
+                receivedPackets[p.header.seqNum] = p;
+
+                if(int(p.header.seqNum) == next_seq){
+                    while(receivedPackets.find(next_seq) != receivedPackets.end()){
+                        //iterates through map
+                        Packet order = receivedPackets[next_seq];
+                        receivedPackets.erase(next_seq);
+                        //TODO write to output file
+                        next_seq++;
+                    } 
+                }
+                
+                ackPacket.header.type = htonl(3); // 3 = ack
+                ackPacket.header.seqNum = htonl(next_seq);
+                ackPacket.toBuffer(ACK);
+                ackPacket.print(); 
+                
+                ssize_t bytes_sent =  sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
                 if (bytes_sent < 0) {
                     cout << "Failed to send packet" << endl;
                 } else {
-                    std::cout << "Sent packet: Type=" << p.header.type << ", SeqNum=" << p.header.seqNum << std::endl;
+                    std::cout << "DATA ACK sent successfully\n";
                 }
-
-                output_file.close();
-                //TODO: END
-            } else if(p.header.type == 2){ //DATA
-                 int c = p.header.checkSum; 
-                 int calculated_c = crc32(buffer+28, recv_len -28);
-                 if(c == calculated_c){
-                    //only do stuff if valid crc
-                    if(next_seq + window_size > p.header.seqNum){  //only handles things in windowsize
-                        //if packet has correct crc and is in window size-> add to map
-                        receivedPackets[p.header.seqNum] = p;
-    
-                        if(p.header.seqNum == next_seq){
-                            while(receivedPackets.find(next_seq) != receivedPackets.end()){
-                                //iterates through map
-                                Packet order = receivedPackets[next_seq];
-                                receivedPackets.erase(next_seq);
-                                //TODO write to output file
-                                next_seq++;
-                            }
-                        }
-                       
-                        ackPacket.header.type = 3; // 3 = ack
-                        ackPacket.header.seqNum = next_seq;
-                        ssize_t bytes_sent = sendto(sockfd, &p, sizeof(p), 0, (struct sockaddr*)&addr, sizeof(addr));
-                        if (bytes_sent < 0) {
-                            cout << "Failed to send packet" << endl;
-                        } else {
-                            std::cout << "Sent packet: Type=" << p.header.type << ", SeqNum=" << p.header.seqNum << std::endl;
-                        }
-                    }
-
-                    //TODO output dir + log
-                    next_seq++;
-                 }
             }
-                
-            
 
-        } else{
-            cout << "insufficient buffer size" << endl;
-            exit(1);
+            //TODO output dir + log
+            next_seq++;
+            }
         }
-
-        
+                
     }
 }
 
