@@ -25,14 +25,12 @@ private:
     unsigned int randSeqNum;
     Logger* logger;
     Window* window;
-    std::chrono::steady_clock::time_point lastAckTime;
+    // std::chrono::steady_clock::time_point lastAckTime;
 
     // helper functions
     void createUDPSocket(int receiverPort, std::string& receiverIP);
-    void sendNewPacket(const Packet& packet);
-    void retransmitPacket(const Packet& packet);
+    void sendPacket(const Packet& packet, bool isFirstSend);
     Packet receiveAck();
-    void handleTimeout();
     bool isAckValid(const Packet& ackPacket);
 };
 

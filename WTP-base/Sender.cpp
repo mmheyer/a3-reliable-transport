@@ -51,17 +51,25 @@ void Sender::startConnection() {
     // Generate the random sequence number
     randSeqNum = dis(gen);
 
+    // send the start packet
     Packet startPacket(START, {}, randSeqNum);  // Sequence number for START
-    sendNewPacket(startPacket);
+    sendPacket(startPacket, true);
 
+    // attempt to receive the ACK packet
     Packet ackPacket = receiveAck();
-    // if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
-    if (!isAckValid(ackPacket)) {
-        std::cerr << "Invalid ACK for START packet. Retrying...\n";
-        handleTimeout();
-    } else {
-        // remove start packet from the window
-        window->removeAcknowledgedPackets();
+
+    // if the packet type is 4, recv timed out and we need to retransmit
+    if (ackPacket.getType() == 4) {
+        std::cerr << "Timed out. Retransmitting packet...\n";
+        sendPacket(startPacket, false);
+    } 
+    // if the checksum or seqnum is incorrect, retransmit the packet
+    else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
+        sendPacket(startPacket, false);
+    } 
+    // otherwise, remove start packet from the window
+    else {
+        window->removeAcknowledgedPackets(1);
         std::cout << "Connection started successfully.\n";
     }
 }
@@ -84,32 +92,46 @@ void Sender::sendData(const std::string& filename) {
             std::vector<char> chunk(buffer.begin() + static_cast<long>(offset), buffer.begin() + static_cast<long>(offset) + static_cast<long>(chunkSize));
 
             Packet dataPacket(DATA, chunk, dataSeqNum++);
-            sendNewPacket(dataPacket);
+            sendPacket(dataPacket, true);
             offset += chunkSize;
         }
 
         // Receive ACKs and handle window movement
         Packet ackPacket = receiveAck();
-        if (isAckValid(ackPacket)) {
-            // size_t ackedPackets = ackPacket.getSeqNum() - static_cast<unsigned int>(window->getNextSeqNum()) + 1;
-            window->removeAcknowledgedPackets();
-            lastAckTime = std::chrono::steady_clock::now();
-        } else {
-            handleTimeout();
+
+        // if the packet type is 4, recv timed out and we need to retransmit all the packets
+        if (ackPacket.getType() == 4) {
+            for (const Packet& packet : window->getPackets()) {
+                sendPacket(packet, false);
+            }
         }
+        // if the checksum is valid and we received an ACK for a packet after expected packet in the window
+        else if (isAckValid(ackPacket) && ackPacket.getSeqNum() > window->getNextSeqNum()) {
+            size_t ackedPackets = ackPacket.getSeqNum() - static_cast<unsigned int>(window->getNextSeqNum());
+            window->removeAcknowledgedPackets(ackedPackets);
+        } 
+        // checksum was invalid or seqnum was for same packet, so don't do anything
     }
 }
 
 // Terminates the connection with an END packet
 void Sender::endConnection() {
     Packet endPacket(END, {}, randSeqNum);  // Sequence number for END should match START
-    sendNewPacket(endPacket);
+    sendPacket(endPacket, true);
 
     Packet ackPacket = receiveAck();
+    // if the packet type is 4, recv timed out so retransmit packet
+    if (ackPacket.getType() == 4) {
+        std::cerr << "Timed out. Retransmitting packet...\n";
+        sendPacket(endPacket, false);
+    }
+    // if the checksum or seqnum is incorrect, retransmit the packet
     if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != endPacket.getSeqNum()) {
         std::cerr << "Invalid ACK for END packet. Retrying...\n";
-        handleTimeout();
-    } else {
+        sendPacket(endPacket, false);
+    } 
+    // otherwise, the connection was ended successfully
+    else {
         std::cout << "Connection ended successfully.\n";
     }
 }
@@ -152,9 +174,19 @@ void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
         close(sockfd);
         throw std::runtime_error("Invalid receiver IP address");
     }
+
+    // Set a 500-millisecond receive timeout
+    struct timeval timeout;
+    timeout.tv_sec = 0;        // Seconds
+    timeout.tv_usec = 500000;  // Microseconds (500 ms)
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+        perror("setsockopt failed");
+        close(sockfd);
+        exit(1);
+    }
 }
 
-void Sender::sendNewPacket(const Packet& packet) {
+void Sender::sendPacket(const Packet& packet, bool isFirstSend) {
     // Prepare the packet data in a contiguous buffer
     PacketHeader networkHeader = packet.getNetworkOrderHeader();
     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
@@ -165,33 +197,15 @@ void Sender::sendNewPacket(const Packet& packet) {
 
     // Send the packet over the socket
     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
+    std::cout << "Packet sent, waiting for ACK..." << std::endl;
 
     // Log the packet transmission
     logger->logPacket(packet.getHeader());
 
-    // Add the packet to the window for tracking since this is the first send
-    window->addPacket(packet);
+    // Add the packet to the window for tracking if this is the first send
+    if(isFirstSend) window->addPacket(packet);
 }
 
-void Sender::retransmitPacket(const Packet& packet) {
-    std::cout << "Retransmitting packet with sequence number: " << packet.getSeqNum() << std::endl;
-
-    // Prepare the packet data in a contiguous buffer (same as in sendNewPacket)
-    PacketHeader networkHeader = packet.getNetworkOrderHeader();
-    size_t totalSize = sizeof(PacketHeader) + packet.getLength();
-    std::vector<char> buffer(totalSize);
-
-    std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
-    std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
-
-    // Send the packet over the socket
-    sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
-
-    // Log the retransmission, but do not add to the window again
-    logger->logPacket(packet.getHeader());
-}
-
-// Receives an ACK and returns it as a Packet
 Packet Sender::receiveAck() {
     // Buffer to hold the incoming packet data
     const size_t bufferSize = sizeof(PacketHeader) + CHUNK_SIZE;
@@ -203,8 +217,11 @@ Packet Sender::receiveAck() {
     ssize_t receivedBytes = recvfrom(sockfd, buffer.data(), bufferSize, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
 
     // Error handling if receiving failed
-    if (receivedBytes < static_cast<ssize_t>(sizeof(PacketHeader))) {
-        throw std::runtime_error("Failed to receive a complete ACK packet");
+    if (receivedBytes < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+        std::cout << "Timeout reached, retransmitting packet..." << std::endl;
+        // return a packet with a type of 4 to indicate timeout
+        Packet noPacket(4);
+        return noPacket;
     }
     
     // Create the packet using the data in the buffer
@@ -213,21 +230,80 @@ Packet Sender::receiveAck() {
     return ackPacket;
 }
 
-void Sender::handleTimeout() {
-    auto currentTime = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastAckTime);
-    if (duration.count() >= 500) {
-        std::cout << "Timeout occurred. Retransmitting all packets in the window.\n";
-        
-        // Retransmit all packets in the window
-        for (const Packet& packet : window->getPackets()) {
-            retransmitPacket(packet);
-        }
+// void Sender::sendNewPacket(const Packet& packet) {
+//     // Prepare the packet data in a contiguous buffer
+//     PacketHeader networkHeader = packet.getNetworkOrderHeader();
+//     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
+//     std::vector<char> buffer(totalSize);
 
-        // Reset the timer
-        lastAckTime = std::chrono::steady_clock::now();
-    }
-}
+//     std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
+//     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
+
+//     // Send the packet over the socket
+//     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
+
+//     // Log the packet transmission
+//     logger->logPacket(packet.getHeader());
+
+//     // Add the packet to the window for tracking since this is the first send
+//     window->addPacket(packet);
+// }
+
+// void Sender::retransmitPacket(const Packet& packet) {
+//     std::cout << "Retransmitting packet with sequence number: " << packet.getSeqNum() << std::endl;
+
+//     // Prepare the packet data in a contiguous buffer (same as in sendNewPacket)
+//     PacketHeader networkHeader = packet.getNetworkOrderHeader();
+//     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
+//     std::vector<char> buffer(totalSize);
+
+//     std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
+//     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
+
+//     // Send the packet over the socket
+//     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
+
+//     // Log the retransmission, but do not add to the window again
+//     logger->logPacket(packet.getHeader());
+// }
+
+// // Receives an ACK and returns it as a Packet
+// Packet Sender::receiveAck() {
+//     // Buffer to hold the incoming packet data
+//     const size_t bufferSize = sizeof(PacketHeader) + CHUNK_SIZE;
+//     std::vector<char> buffer(bufferSize);
+
+//     // Receive the ACK packet into the buffer
+//     sockaddr_in senderAddr;
+//     socklen_t senderAddrLen = sizeof(senderAddr);
+//     ssize_t receivedBytes = recvfrom(sockfd, buffer.data(), bufferSize, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
+
+//     // Error handling if receiving failed
+//     if (receivedBytes < static_cast<ssize_t>(sizeof(PacketHeader))) {
+//         throw std::runtime_error("Failed to receive a complete ACK packet");
+//     }
+    
+//     // Create the packet using the data in the buffer
+//     Packet ackPacket(buffer.data(), bufferSize);
+
+//     return ackPacket;
+// }
+
+// void Sender::handleTimeout() {
+//     auto currentTime = std::chrono::steady_clock::now();
+//     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastAckTime);
+//     if (duration.count() >= 500) {
+//         std::cout << "Timeout occurred. Retransmitting all packets in the window.\n";
+        
+//         // Retransmit all packets in the window
+//         for (const Packet& packet : window->getPackets()) {
+//             retransmitPacket(packet);
+//         }
+
+//         // Reset the timer
+//         lastAckTime = std::chrono::steady_clock::now();
+//     }
+// }
 
 // Validates the received ACK packet by checking the checksum
 bool Sender::isAckValid(const Packet& ackPacket) {

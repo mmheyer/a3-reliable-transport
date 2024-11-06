@@ -6,11 +6,15 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <stdexcept>
+#include <random>
 #include "crc32.h"
 
 #define PORT 8888
-#define WINDOW_SIZE 5
+#define WINDOW_SIZE 3
 #define FILE_PREFIX "FILE-"
+
+// Packet loss rate (e.g., 0.2 for 20% loss)
+const double PACKET_LOSS_RATE = 0.2;
 
 struct PacketHeader {
     unsigned int type;     // 0: START; 1: END; 2: DATA; 3: ACK
@@ -44,14 +48,17 @@ private:
     int fileCounter = 0;
     int expectedSeqNum = 0;
     std::ofstream outFile;
-    std::string generateFileName();
+    std::mt19937 rng; // Random number generator
+    std::uniform_real_distribution<> dist;
 
+    std::string generateFileName();
+    bool shouldDropPacket();
     void sendAck(int seqNum);
     void processPacket(const PacketHeader& header, const std::vector<char>& data);
     bool verifyChecksum(const PacketHeader& header, const std::vector<char>& data);
 };
 
-TestReceiver::TestReceiver() {
+TestReceiver::TestReceiver() : dist(0.0, 1.0) {
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket creation failed");
         exit(1);
@@ -69,6 +76,9 @@ TestReceiver::TestReceiver() {
     }
 
     std::cout << "Receiver is listening on port " << PORT << std::endl;
+
+    // Initialize random number generator with a random seed
+    rng.seed(std::random_device{}());
 }
 
 void TestReceiver::run() {
@@ -88,8 +98,19 @@ void TestReceiver::run() {
         header.checkSum = ntohl(header.checkSum);
 
         std::vector<char> data(buffer + sizeof(PacketHeader), buffer + recv_len);
+
+        // Simulate packet loss
+        if (shouldDropPacket()) {
+            std::cout << "Simulating packet loss, dropping packet with seqNum = " << header.seqNum << std::endl;
+            continue;
+        }
+
         processPacket(header, data);
     }
+}
+
+bool TestReceiver::shouldDropPacket() {
+    return dist(rng) < PACKET_LOSS_RATE;
 }
 
 void TestReceiver::processPacket(const PacketHeader& header, const std::vector<char>& data) {

@@ -10,8 +10,6 @@ Packet::Packet(unsigned int type, const std::vector<char>& data, unsigned int se
     header.checkSum = calculateCheckSum();
 }
 
-#include "Packet.hpp"
-
 // Constructor for creating packets from received buffer
 Packet::Packet(const char* buffer, size_t bufferSize) {
     if (bufferSize < sizeof(PacketHeader)) {

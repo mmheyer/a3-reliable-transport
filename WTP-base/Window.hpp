@@ -17,7 +17,7 @@ public:
     void addPacket(const Packet& packet);
 
     // remove packet from the window after receiving
-    void removeAcknowledgedPackets();
+    void removeAcknowledgedPackets(size_t count);
 
     // access packets in the window
     const std::deque<Packet>& getPackets() const;

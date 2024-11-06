@@ -11,8 +11,10 @@ void Window::addPacket(const Packet& packet) {
 }
 
 // remove packet from the window after receiving
-void Window::removeAcknowledgedPackets() {
-    packets.pop_front();
+void Window::removeAcknowledgedPackets(size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        packets.pop_front();
+    }
 }
 
 // Returns a const reference to all packets currently in the window
