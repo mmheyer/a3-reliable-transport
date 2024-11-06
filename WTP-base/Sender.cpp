@@ -110,7 +110,7 @@ void Sender::sendData(const std::string& filename) {
             size_t ackedPackets = ackPacket.getSeqNum() - static_cast<unsigned int>(window->getNextSeqNum());
             window->removeAcknowledgedPackets(ackedPackets);
         } 
-        // checksum was invalid or seqnum was for same packet, so don't do anything
+        // checksum was invalid or seqnum was for same packet, so drop the packet
     }
 }
 
@@ -167,7 +167,7 @@ void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
 
     // Set up receiver address
     receiverAddr.sin_family = AF_INET;
-    receiverAddr.sin_port = htons(receiverPort);
+    receiverAddr.sin_port = htons(static_cast<uint16_t>(receiverPort));
 
     // Convert the receiver IP to binary form and store in receiverAddr
     if (inet_pton(AF_INET, receiverIP.c_str(), &receiverAddr.sin_addr) <= 0) {
@@ -226,6 +226,9 @@ Packet Sender::receiveAck() {
     
     // Create the packet using the data in the buffer
     Packet ackPacket(buffer.data(), bufferSize);
+
+    // log the packet
+    logger->logPacket(ackPacket.getHeader());
 
     return ackPacket;
 }
