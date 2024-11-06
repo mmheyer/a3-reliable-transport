@@ -210,7 +210,7 @@ void WReceiver::startReceiving(){
             cout << c << "*" << calculated_c << endl; 
             if(c == calculated_c){
             //only do stuff if valid crc
-            if(next_seq + window_size > int(p.header.seqNum)){  //only handles things in windowsize
+            if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
                 //if packet has correct crc and is in window size-> add to map
                 receivedPackets[p.header.seqNum] = p;
 
@@ -239,7 +239,6 @@ void WReceiver::startReceiving(){
                 }
             }
 
-            //TODO output dir + log
             next_seq++;
             }
         }
