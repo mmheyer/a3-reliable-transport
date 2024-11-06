@@ -1,6 +1,6 @@
 # Specify the compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++14 -Wconversion -Wall -Werror -Wextra -pedantic -g
+CXXFLAGS = -std=c++17 -Wconversion -Wall -Wextra -pedantic -g
 
 # Executables
 SENDER_EXECUTABLE = wSender-base

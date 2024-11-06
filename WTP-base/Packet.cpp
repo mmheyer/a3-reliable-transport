@@ -1,6 +1,9 @@
 #include "Packet.hpp"
 #include "crc32.h"
 #include <vector>
+#include <arpa/inet.h>
+#include <cstring>
+#include <stdexcept>
 
 // Constructor for creating packets to send
 Packet::Packet(unsigned int type, const std::vector<char>& data, unsigned int seqNum) : data(data) {
