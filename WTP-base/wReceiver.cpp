@@ -240,6 +240,8 @@ void WReceiver::startReceiving(){
                     std::cout << "DATA ACK sent successfully\n";
                 }
                 
+            } else{
+                cout << "packet drop" << endl;
             }
 
             
