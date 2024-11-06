@@ -47,10 +47,10 @@ class Packet1 {
         }
         void print() const {
             std::cout << "Packet Info:\n";
-            std::cout << "  Type: " << header.type << "\n";
-            std::cout << "  Sequence Number: " << header.seqNum << "\n";
-            std::cout << "  Length: " << header.length << "\n";
-            std::cout << "  Checksum: " << header.checkSum << "\n";
+            std::cout << "  Type: " << ntohl(header.type) << "\n";
+            std::cout << "  Sequence Number: " << ntohl(header.seqNum) << "\n";
+            std::cout << "  Length: " << ntohl(header.length) << "\n";
+            std::cout << "  Checksum: " << ntohl(header.checkSum) << "\n";
             
         }
 };
@@ -115,7 +115,7 @@ void writeToFile(const std::vector<char>& data, int index){
 void WReceiver::startReceiving(){
     bool connection = false; 
     int next_seq = 0; 
-    int counter = 0; 
+    int counter = -1; 
     ofstream output_file;
     int startACK = 0; 
     Packet1 ackPacket;
@@ -154,11 +154,11 @@ void WReceiver::startReceiving(){
                 //ACK FOR START
                 
                 ackPacket.header.type = htonl(3); // 3 = ack
-                startACK = htonl(p.header.seqNum);
-                ackPacket.header.seqNum = p.header.seqNum; //ack with start packets seqnum
+                startACK = p.header.seqNum;
+                ackPacket.header.seqNum = htonl(p.header.seqNum); //ack with start packets seqnum
 
                 ackPacket.toBuffer(ACK);
-                ackPacket.print(); 
+              //  ackPacket.print(); 
                 // Send the packet
                 logOutput.logPacket(ackPacket.header);
                 ssize_t bytes_sent = sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
@@ -167,21 +167,20 @@ void WReceiver::startReceiving(){
                 } else {
                     std::cout << "START ACK sent successfully\n";
                 }
-               
-                //TODO: log
-                output_file.open(output_dir + "/FILE-" + std::to_string(counter++) + ".out", std::ios::binary);
+                counter++;
+                output_file.open(output_dir + "/FILE-" + std::to_string(counter) + ".out", std::ios::binary);
+                
                 
             }
         } else if(p.header.type == 1){ //END
             cout << "[End Debug] END received" << endl;
             //end
             connection = false;
-
             //ACK
             ackPacket.header.type = htonl(3); // 3 = ack
             ackPacket.header.seqNum = htonl(startACK); //ack with start packets seqnum
             ackPacket.toBuffer(ACK);
-            ackPacket.print(); 
+            //ackPacket.print(); 
 
             logOutput.logPacket(ackPacket.header);
             ssize_t bytes_sent =  sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
@@ -213,16 +212,19 @@ void WReceiver::startReceiving(){
             if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
                 //if packet has correct crc and is in window size-> add to map
                 receivedPackets[p.header.seqNum] = p;
-
+                cout << "NEXT SEQ " << next_seq << endl;
+                cout << "HEADEr SWQ " << ntohl(p.header.seqNum) << endl;
                 if(int(p.header.seqNum) == next_seq){
+                    cout << endl;
+                    cout << "RIGHT SEQ NUM RECEIVED" << endl;
                     while(receivedPackets.find(next_seq) != receivedPackets.end()){
                         //iterates through map
                         Packet1 order = receivedPackets[next_seq];
                         receivedPackets.erase(next_seq);
                         //TODO write to output file
                         writeToFile(order.data, counter);
-                        next_seq++;
                     } 
+                    next_seq++;
                 }
                 
                 ackPacket.header.type = htonl(3); // 3 = ack
@@ -237,9 +239,10 @@ void WReceiver::startReceiving(){
                 } else {
                     std::cout << "DATA ACK sent successfully\n";
                 }
+                
             }
 
-            next_seq++;
+            
             }
         }
                 
