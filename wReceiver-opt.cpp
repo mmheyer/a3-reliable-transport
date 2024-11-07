@@ -7,8 +7,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <map>
-#include "Packet.hpp"
-#include "Logger.hpp"
+#include <netinet/in.h>
+#include "Packet-opt.hpp"
+#include "Logger-opt.hpp"
 #include "crc32.h"
 
 using namespace std; 
@@ -18,7 +19,7 @@ class Packet1 {
     public:
 		vector<char> data;
 	
-    	PacketHeader header;
+    	PacketOptHeader header;
         Packet1(){
             header.checkSum = 0; 
             header.type = 0;
@@ -71,7 +72,7 @@ class WReceiver {
         string log_file;
 
         bool validateChecksum(const char* data, int length, unsigned int receivedChecksum);
-        void handlePacket(const PacketHeader& header, const char* data, int length);
+        void handlePacket(const PacketOptHeader& header, const char* data, int length);
 };
 
 WReceiver::WReceiver(int port, int window_size, string output_dir, string log_file):
@@ -92,7 +93,7 @@ WReceiver::WReceiver(int port, int window_size, string output_dir, string log_fi
         addr.sin_addr.s_addr = INADDR_ANY; 
         addr.sin_port = htons(static_cast<uint16_t>(port));
 
-        //bind to port 
+        // bind to port 
         if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
             cout << "Bind failed" << endl;
             exit(1);
@@ -119,7 +120,7 @@ void WReceiver::startReceiving(){
     ofstream output_file;
     int startACK = 0; 
     Packet1 ackPacket;
-    Logger logOutput(log_file);
+    LoggerOpt logOutput(log_file);
 
     cout << "[Debug] Start receiving" << endl;
     map<int, Packet1> receivedPackets; //seq num, packet info
@@ -210,17 +211,24 @@ void WReceiver::startReceiving(){
             cout << c << "*" << calculated_c << endl; 
             if(c == calculated_c){
             //only do stuff if valid crc
-            next_seq = p.header.seqNum;
             if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
-                
+                next_seq = p.header.seqNum;
+
                 //if packet has correct crc and is in window size-> add to map
                 receivedPackets[p.header.seqNum] = p;
                 cout << "NEXT SEQ " << next_seq << endl;
                 cout << "HEADEr SWQ " << ntohl(p.header.seqNum) << endl;
-                //add to map if hasnt been received before
-                if (receivedPackets.find(next_seq) == receivedPackets.end()) {
-                    receivedPackets[next_seq] = p;
-                    writeToFile(p.data, counter); // Writes the valid data to file
+                if(int(p.header.seqNum) == next_seq){
+                    cout << endl;
+                    cout << "RIGHT SEQ NUM RECEIVED" << endl;
+                    while(receivedPackets.find(next_seq) != receivedPackets.end()){
+                        //iterates through map
+                        Packet1 order = receivedPackets[next_seq];
+                        receivedPackets.erase(next_seq);
+                        //TODO write to output file
+                        writeToFile(order.data, counter);
+                    } 
+                   // next_seq++;
                 }
                 
                 ackPacket.header.type = htonl(3); // 3 = ack

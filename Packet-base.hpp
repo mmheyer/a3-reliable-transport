@@ -1,5 +1,5 @@
-#ifndef PACKET_HPP
-#define PACKET_HPP
+#ifndef PACKET_BASE_HPP
+#define PACKET_BASE_HPP
 
 #include <vector>
 #include <cstdlib>

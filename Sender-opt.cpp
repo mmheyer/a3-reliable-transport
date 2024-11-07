@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "Sender-opt.hpp"
-#include "Logger.hpp"
+#include "Logger-opt.hpp"
 #include "Window-opt.hpp"
 #include "Packet-opt.hpp"
 
@@ -21,26 +21,26 @@ const int PORT = 9000; // Port to listen on, adjust as necessary
 const size_t CHUNK_SIZE = 1456;
 
 // constructor
-Sender::Sender(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile)
+SenderOpt::SenderOpt(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile)
     : sockfd(0), randSeqNum(0) {
     // setup UDP socket
     createUDPSocket(receiverPort, receiverIP);
     
     // create logger
-    logger = new Logger(logFile);
+    logger = new LoggerOpt(logFile);
 
     // create window
-    window = new Window(windowSize);
+    window = new WindowOpt(windowSize);
 }
 
 // destructor
-Sender::~Sender() {
+SenderOpt::~SenderOpt() {
     delete logger;
     delete window;
 }
 
 // Initiates the connection with a START packet and waits for an ACK
-void Sender::startConnection() {
+void SenderOpt::startConnection() {
     // Set up the random number generator
     std::random_device rd;  // Seed generator
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
@@ -52,7 +52,7 @@ void Sender::startConnection() {
     randSeqNum = dis(gen);
 
     // Send the start packet
-    Packet startPacket(START, {}, randSeqNum);  // Sequence number for START
+    PacketOpt startPacket(STARTOPT, {}, randSeqNum);  // Sequence number for START
     sendPacket(startPacket, true);
 
     // Timer for 500 ms
@@ -61,7 +61,7 @@ void Sender::startConnection() {
 
     while (!ackReceived) {
         // Attempt to receive the ACK packet
-        Packet ackPacket = receiveAck();
+        PacketOpt ackPacket = receiveAck();
 
         // Check if the packet type indicates a timeout (type 4 in this context)
         if (ackPacket.getType() == 4) {
@@ -90,7 +90,7 @@ void Sender::startConnection() {
 }
 
 // Reads the file and transmits it in chunks using DATA packets
-void Sender::sendData(const std::string& filename) {
+void SenderOpt::sendData(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Failed to open file for reading");
@@ -106,16 +106,16 @@ void Sender::sendData(const std::string& filename) {
             size_t chunkSize = std::min(CHUNK_SIZE, buffer.size() - offset);
             std::vector<char> chunk(buffer.begin() + static_cast<long>(offset), buffer.begin() + static_cast<long>(offset) + static_cast<long>(chunkSize));
 
-            Packet dataPacket(DATA, chunk, dataSeqNum++);
+            PacketOpt dataPacket(DATAOPT, chunk, dataSeqNum++);
             sendPacket(dataPacket, true);
             offset += chunkSize;
         }
 
         // Receive ACKs and handle window movement
-        Packet ackPacket = receiveAck();
+        PacketOpt ackPacket = receiveAck();
 
-        // if we received an ACK and the checksum is valid
-        if (ackPacket.getType() == ACK) {
+        // if we received an ACK
+        if (ackPacket.getType() == ACKOPT) {
             // if the checksum is valid
             if (isAckValid(ackPacket)) {
                 // mark the packet as ACKed
@@ -157,8 +157,8 @@ void Sender::sendData(const std::string& filename) {
 }
 
 // Terminates the connection with an END packet
-void Sender::endConnection() {
-    Packet endPacket(END, {}, randSeqNum);  // Sequence number for END should match START
+void SenderOpt::endConnection() {
+    PacketOpt endPacket(ENDOPT, {}, randSeqNum);  // Sequence number for END should match START
     sendPacket(endPacket, true);
 
     // Timer for 500 ms
@@ -167,7 +167,7 @@ void Sender::endConnection() {
 
     while (!ackReceived) {
         // Attempt to receive the ACK packet
-        Packet ackPacket = receiveAck();
+        PacketOpt ackPacket = receiveAck();
 
         // Check if the packet type indicates a timeout (type 4 in this context)
         if (ackPacket.getType() == 4) {
@@ -195,7 +195,7 @@ void Sender::endConnection() {
 }
 
 // create a UDP socket and bind the socket to the port
-void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
+void SenderOpt::createUDPSocket(int receiverPort, std::string& receiverIP) {
     struct sockaddr_in si_me;
 
     // Create a UDP socket
@@ -247,14 +247,14 @@ void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
     }
 }
 
-void Sender::sendPacket(const Packet& packet, bool isFirstSend) {
+void SenderOpt::sendPacket(const PacketOpt& packet, bool isFirstSend) {
     // Prepare the packet data in a contiguous buffer
-    PacketHeader networkHeader = packet.getNetworkOrderHeader();
-    size_t totalSize = sizeof(PacketHeader) + packet.getLength();
+    PacketOptHeader networkHeader = packet.getNetworkOrderHeader();
+    size_t totalSize = sizeof(PacketOptHeader) + packet.getLength();
     std::vector<char> buffer(totalSize);
 
-    std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
-    std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
+    std::memcpy(buffer.data(), &networkHeader, sizeof(PacketOptHeader));
+    std::memcpy(buffer.data() + sizeof(PacketOptHeader), packet.getData().data(), packet.getLength());
 
     // Send the packet over the socket
     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
@@ -275,9 +275,9 @@ void Sender::sendPacket(const Packet& packet, bool isFirstSend) {
     }
 }
 
-Packet Sender::receiveAck() {
+PacketOpt SenderOpt::receiveAck() {
     // Buffer to hold the incoming packet data
-    const size_t bufferSize = sizeof(PacketHeader) + CHUNK_SIZE;
+    const size_t bufferSize = sizeof(PacketOptHeader) + CHUNK_SIZE;
     std::vector<char> buffer(bufferSize);
 
     // Receive the ACK packet into the buffer
@@ -288,12 +288,12 @@ Packet Sender::receiveAck() {
     // Error handling if receiving failed
     if (receivedBytes < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
         // No ACKs are being received, so return a packet with a type of 4 to indicate timeout
-        Packet noPacket(4);
+        PacketOpt noPacket(4);
         return noPacket;
     }
     
     // Create the packet using the data in the buffer
-    Packet ackPacket(buffer.data(), bufferSize);
+    PacketOpt ackPacket(buffer.data(), bufferSize);
 
     // log the packet
     logger->logPacket(ackPacket.getHeader());
@@ -301,7 +301,7 @@ Packet Sender::receiveAck() {
     return ackPacket;
 }
 
-// void Sender::sendNewPacket(const Packet& packet) {
+// void Sender::sendNewPacket(const PacketOpt& packet) {
 //     // Prepare the packet data in a contiguous buffer
 //     PacketHeader networkHeader = packet.getNetworkOrderHeader();
 //     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
@@ -320,7 +320,7 @@ Packet Sender::receiveAck() {
 //     window->addPacket(packet);
 // }
 
-// void Sender::retransmitPacket(const Packet& packet) {
+// void Sender::retransmitPacket(const PacketOpt& packet) {
 //     std::cout << "Retransmitting packet with sequence number: " << packet.getSeqNum() << std::endl;
 
 //     // Prepare the packet data in a contiguous buffer (same as in sendNewPacket)
@@ -338,8 +338,8 @@ Packet Sender::receiveAck() {
 //     logger->logPacket(packet.getHeader());
 // }
 
-// // Receives an ACK and returns it as a Packet
-// Packet Sender::receiveAck() {
+// // Receives an ACK and returns it as a PacketOpt
+// PacketOpt Sender::receiveAck() {
 //     // Buffer to hold the incoming packet data
 //     const size_t bufferSize = sizeof(PacketHeader) + CHUNK_SIZE;
 //     std::vector<char> buffer(bufferSize);
@@ -355,7 +355,7 @@ Packet Sender::receiveAck() {
 //     }
     
 //     // Create the packet using the data in the buffer
-//     Packet ackPacket(buffer.data(), bufferSize);
+//     PacketOpt ackPacket(buffer.data(), bufferSize);
 
 //     return ackPacket;
 // }
@@ -367,7 +367,7 @@ Packet Sender::receiveAck() {
 //         std::cout << "Timeout occurred. Retransmitting all packets in the window.\n";
         
 //         // Retransmit all packets in the window
-//         for (const Packet& packet : window->getPackets()) {
+//         for (const PacketOpt& packet : window->getPackets()) {
 //             retransmitPacket(packet);
 //         }
 
@@ -377,13 +377,13 @@ Packet Sender::receiveAck() {
 // }
 
 // Validates the received ACK packet by checking the checksum
-bool Sender::isAckValid(const Packet& ackPacket) {
+bool SenderOpt::isAckValid(const PacketOpt& ackPacket) {
     return ackPacket.getCheckSum() == ackPacket.calculateCheckSum();
 }
 
 int main(int argc, char* argv[]) {
     if (argc != 6) {
-        std::cerr << "Usage: ./Sender <receiver-IP> <receiver-port> <window-size> <input-file> <log>\n";
+        std::cerr << "Usage: ./SenderOpt <receiver-IP> <receiver-port> <window-size> <input-file> <log>\n";
         return 1;
     }
 
@@ -413,7 +413,7 @@ int main(int argc, char* argv[]) {
 
     // Create Sender
     try {
-        Sender sender(receiverIP, receiverPort, windowSize, logFile);
+        SenderOpt sender(receiverIP, receiverPort, windowSize, logFile);
         sender.startConnection();
         sender.sendData(inputFile);
         sender.endConnection();

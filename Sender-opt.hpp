@@ -1,19 +1,19 @@
-#ifndef SENDER_HPP
-#define SENDER_HPP
+#ifndef SENDER_OPT_HPP
+#define SENDER_OPT_HPP
 
 #include <string>
 #include <vector>
 #include <chrono>
-#include "Logger.hpp"
+#include "Logger-opt.hpp"
 #include "Window-opt.hpp"
 
-class Sender {
+class SenderOpt {
 public:
     // constructor
-    Sender(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile);
+    SenderOpt(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile);
 
     // destructor
-    ~Sender();
+    ~SenderOpt();
 
     // Start the connection, send data, and end connection
     void startConnection();
@@ -23,14 +23,14 @@ private:
     int sockfd;
     sockaddr_in receiverAddr;
     unsigned int randSeqNum;
-    Logger* logger;
-    Window* window;
+    LoggerOpt* logger;
+    WindowOpt* window;
 
     // helper functions
     void createUDPSocket(int receiverPort, std::string& receiverIP);
-    void sendPacket(const Packet& packet, bool isFirstSend);
-    Packet receiveAck();
-    bool isAckValid(const Packet& ackPacket);
+    void sendPacket(const PacketOpt& packet, bool isFirstSend);
+    PacketOpt receiveAck();
+    bool isAckValid(const PacketOpt& ackPacket);
 };
 
 #endif // SENDER_HPP

@@ -1,5 +1,5 @@
-#ifndef PACKET_HPP
-#define PACKET_HPP
+#ifndef PACKET_OPT_HPP
+#define PACKET_OPT_HPP
 
 #include <vector>
 #include <cstdlib>
@@ -8,31 +8,31 @@
 // Define TimePoint as a convenience alias for steady_clock time points
 using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
-enum PacketType {
-    START = 0,
-    END = 1,
-    DATA = 2,
-    ACK = 3,
-    ERROR = 4
+enum PacketOptType {
+    STARTOPT = 0,
+    ENDOPT = 1,
+    DATAOPT = 2,
+    ACKOPT = 3,
+    ERROROPT = 4
 };
 
-struct PacketHeader {
+struct PacketOptHeader {
     unsigned int type;     // 0: START; 1: END; 2: DATA; 3: ACK
     unsigned int seqNum;   // Sequence number
     unsigned int length;   // Length of data; 0 for ACK packets
     unsigned int checkSum; // 32-bit CRC checksum
 };
 
-class Packet {
+class PacketOpt {
 public:
     // Constructor for sending packets (prepares header for network transmission)
-    Packet(unsigned int type, const std::vector<char>& data = {}, unsigned int seqNum = 0);
+    PacketOpt(unsigned int type, const std::vector<char>& data = {}, unsigned int seqNum = 0);
 
     // Constructor for receiving packets (parses header from received buffer)
-    Packet(const char* buffer, size_t bufferSize);
+    PacketOpt(const char* buffer, size_t bufferSize);
 
     // Accessor methods
-    const PacketHeader& getHeader() const { return header; }
+    const PacketOptHeader& getHeader() const { return header; }
     unsigned int getType() const { return header.type; }
     unsigned int getSeqNum() const { return header.seqNum; }
     unsigned int getLength() const { return header.length; }
@@ -43,21 +43,21 @@ public:
     unsigned int calculateCheckSum() const;
 
     // Convert header to network byte order for sending
-    PacketHeader getNetworkOrderHeader() const;
+    PacketOptHeader getNetworkOrderHeader() const;
 
 private:
-    PacketHeader header;
+    PacketOptHeader header;
     std::vector<char> data;
 };
 
 class PacketInfo {
 public:
     // Constructor to create a PacketInfo with the current time as sentTime
-    PacketInfo(const Packet* packet) 
+    PacketInfo(const PacketOpt* packet) 
         : packet(packet), isAcked(false), sentTime(std::chrono::steady_clock::now()) {}
 
     // Accessor for the packet
-    const Packet& getPacket() const { return *packet; }
+    const PacketOpt& getPacket() const { return *packet; }
 
     // Mark the packet as acknowledged
     void setAcked() { isAcked = true; }
@@ -71,7 +71,7 @@ public:
     // Check if the packet has timed out (e.g., if more than 500 ms have passed)
     bool hasTimedOut() const;
 private:
-    const Packet* packet;
+    const PacketOpt* packet;
     bool isAcked;
     TimePoint sentTime;
 };

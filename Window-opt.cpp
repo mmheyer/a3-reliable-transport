@@ -2,37 +2,37 @@
 #include "Window-opt.hpp"
 
 // get seqNum of packet next to be ACKed
-unsigned int Window::getNextSeqNum() const {
+unsigned int WindowOpt::getNextSeqNum() const {
     return allPacketInfo.front().getPacket().getSeqNum();
 }
 
 // add packet to the window
-void Window::addPacket(const Packet& packet) {
+void WindowOpt::addPacket(const PacketOpt& packet) {
     allPacketInfo.emplace_back(&packet);
 }
 
 // remove packet from the window after receiving
-void Window::removeAcknowledgedPackets(size_t count) {
+void WindowOpt::removeAcknowledgedPackets(size_t count) {
     for (size_t i = 0; i < count; ++i) {
         allPacketInfo.pop_front();
     }
 }
 
 // Returns a const reference to all packets currently in the window
-const std::deque<PacketInfo>& Window::getAllPacketInfo() const {
+const std::deque<PacketInfo>& WindowOpt::getAllPacketInfo() const {
     return allPacketInfo;
 }
 
-bool Window::hasPackets() const {
+bool WindowOpt::hasPackets() const {
     return !allPacketInfo.empty();
 }
 
-bool Window::canAddPacket() const {
+bool WindowOpt::canAddPacket() const {
     return allPacketInfo.size() < static_cast<unsigned long>(windowSize);
 }
 
 // Check for timed-out packets and return their sequence numbers
-std::vector<unsigned int> Window::getTimedOutPacketSeqNums() const {
+std::vector<unsigned int> WindowOpt::getTimedOutPacketSeqNums() const {
     std::vector<unsigned int> timedOutSeqNums;
     for (const auto& packetInfo : allPacketInfo) {
         if (!packetInfo.packetIsAcked() && packetInfo.hasTimedOut()) {
@@ -42,7 +42,7 @@ std::vector<unsigned int> Window::getTimedOutPacketSeqNums() const {
     return timedOutSeqNums;
 }
 
-void Window::markPacketAsAcked(unsigned int seqNum) {
+void WindowOpt::markPacketAsAcked(unsigned int seqNum) {
     for (auto& packetInfo : allPacketInfo) {
         if (packetInfo.getPacket().getHeader().seqNum == seqNum) {
             packetInfo.setAcked();
@@ -54,7 +54,7 @@ void Window::markPacketAsAcked(unsigned int seqNum) {
 }
 
 // get packet with seqNum
-const Packet* Window::getPacketWithSeqNum(unsigned int seqNum) const {
+const PacketOpt* WindowOpt::getPacketWithSeqNum(unsigned int seqNum) const {
     for (const auto& packetInfo : allPacketInfo) {
         if (packetInfo.getPacket().getHeader().seqNum == seqNum) {
             return &packetInfo.getPacket();
@@ -63,7 +63,7 @@ const Packet* Window::getPacketWithSeqNum(unsigned int seqNum) const {
     return nullptr; // Return nullptr if the packet is not found
 }
 
-size_t Window::determineWindowAdvance() {
+size_t WindowOpt::determineWindowAdvance() {
     size_t advanceCount = 0;
 
     while (!allPacketInfo.empty() && allPacketInfo.front().packetIsAcked()) {
@@ -74,7 +74,7 @@ size_t Window::determineWindowAdvance() {
     return advanceCount;
 }
 
-void Window::resetTimerForSeqNum(unsigned int seqNum) {
+void WindowOpt::resetTimerForSeqNum(unsigned int seqNum) {
     for (auto& packetInfo : allPacketInfo) {
         if (packetInfo.getPacket().getHeader().seqNum == seqNum) {
             packetInfo.updateSentTime();

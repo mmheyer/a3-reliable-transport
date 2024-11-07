@@ -1,10 +1,11 @@
-#ifndef SENDER_HPP
-#define SENDER_HPP
+#ifndef SENDER_BASE_HPP
+#define SENDER_BASE_HPP
 
 #include <string>
 #include <vector>
 #include <chrono>
-#include "Logger.hpp"
+#include <arpa/inet.h>
+#include "Logger-base.hpp"
 #include "Window-base.hpp"
 
 class Sender {

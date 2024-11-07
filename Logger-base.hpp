@@ -1,5 +1,5 @@
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
+#ifndef LOGGER_BASE_HPP
+#define LOGGER_BASE_HPP
 
 #include <string>
 #include <fstream>

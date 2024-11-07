@@ -1,20 +1,20 @@
-#ifndef WINDOW_HPP
-#define WINDOW_HPP
+#ifndef WINDOW_OPT_HPP
+#define WINDOW_OPT_HPP
 
 #include <deque>
 #include <vector>
 #include "Packet-opt.hpp"
 
-class Window {
+class WindowOpt {
 public:
     // constructor
-    Window(int windowSize) : windowSize(windowSize) {};
+    WindowOpt(int windowSize) : windowSize(windowSize) {};
 
     // Get seqNum of the first packet in the window waiting for an ACK
     unsigned int getNextSeqNum() const;
 
     // add packet to the window
-    void addPacket(const Packet& packet);
+    void addPacket(const PacketOpt& packet);
 
     // remove packet from the window after receiving
     void removeAcknowledgedPackets(size_t count);
@@ -35,7 +35,7 @@ public:
     void markPacketAsAcked(unsigned int seqNum);
 
     // get packet with seqNum
-    const Packet* getPacketWithSeqNum(unsigned int seqNum) const;
+    const PacketOpt* getPacketWithSeqNum(unsigned int seqNum) const;
 
     size_t determineWindowAdvance();
 

@@ -1,5 +1,5 @@
-#ifndef WINDOW_HPP
-#define WINDOW_HPP
+#ifndef WINDOW_BASE_HPP
+#define WINDOW_BASE_HPP
 
 #include <deque>
 #include <vector>
