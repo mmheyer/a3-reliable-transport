@@ -70,6 +70,9 @@ public:
 
     // Check if the packet has timed out (e.g., if more than 500 ms have passed)
     bool hasTimedOut() const;
+
+    // getter for sent time
+    TimePoint getSentTime() { return sentTime; }
 private:
     const PacketOpt* packet;
     bool isAcked;

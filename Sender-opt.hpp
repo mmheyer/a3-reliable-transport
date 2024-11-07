@@ -31,6 +31,7 @@ private:
     void sendPacket(const PacketOpt& packet, bool isFirstSend);
     PacketOpt receiveAck();
     bool isAckValid(const PacketOpt& ackPacket);
+    void SenderOpt::updateSocketTimeout()
 };
 
 #endif // SENDER_HPP

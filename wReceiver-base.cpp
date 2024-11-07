@@ -33,8 +33,8 @@ class Packet1 {
             header.length = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 8)));
             header.checkSum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 12)));
             
-            data.resize( s - sizeof(header));
-            memcpy(data.data(), buffer + sizeof(header),  s - sizeof(header));
+            data.resize(static_cast<unsigned long>(s) - sizeof(header));
+            memcpy(data.data(), buffer + sizeof(header),  static_cast<unsigned long>(s) - sizeof(header));
 
         };
 
@@ -108,7 +108,7 @@ void writeToFile(const std::vector<char>& data, int index){
         cout << "Failed to open file\n";
         return;
     }
-    outfile.write(data.data(), data.size());
+    outfile.write(data.data(), static_cast<long>(data.size()));
     outfile.close();
     cout << "[DEBUG] data written to " << filename << endl;
 }
@@ -155,7 +155,7 @@ void WReceiver::startReceiving(){
                 //ACK FOR START
                 
                 ackPacket.header.type = htonl(3); // 3 = ack
-                startACK = p.header.seqNum;
+                startACK = static_cast<int>(p.header.seqNum);
                 ackPacket.header.seqNum = htonl(p.header.seqNum); //ack with start packets seqnum
 
                 ackPacket.toBuffer(ACK);
@@ -205,14 +205,14 @@ void WReceiver::startReceiving(){
             }
             std::cout << std::endl;
 
-            int c = p.header.checkSum; 
-            int calculated_c = crc32(p.data.data(), p.data.size());
+            int c = static_cast<int>(p.header.checkSum); 
+            int calculated_c = static_cast<int>(crc32(p.data.data(), p.data.size()));
             cout << c << "*" << calculated_c << endl; 
             if(c == calculated_c){
             //only do stuff if valid crc
             if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
                 //if packet has correct crc and is in window size-> add to map
-                receivedPackets[p.header.seqNum] = p;
+                receivedPackets[static_cast<int>(p.header.seqNum)] = p;
                 cout << "NEXT SEQ " << next_seq << endl;
                 cout << "HEADEr SWQ " << ntohl(p.header.seqNum) << endl;
                 if(int(p.header.seqNum) == next_seq){

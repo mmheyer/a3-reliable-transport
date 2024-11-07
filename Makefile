@@ -1,18 +1,18 @@
 # Specify the compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++14 -Wconversion -Wall -Werror -Wextra -pedantic 
+CXXFLAGS = -std=c++14 -Wconversion -Wall -Werror -Wextra -pedantic -g
 
 # Executables
 SENDER_EXECUTABLE = wSender-base
 RECEIVER_EXECUTABLE = wReceiver-base
 SENDER_OPT_EXECUTABLE = wSender-opt
-RECEIVER_OPT_EXECUTALBE = wReceiver-opt
+RECEIVER_OPT_EXECUTABLE = wReceiver-opt
 
 # Source files
 SENDER_SOURCES = Sender-base.cpp Logger-base.cpp Packet-base.cpp Window-base.cpp
 SENDER_OPT_SOURCES = Sender-opt.cpp Logger-opt.cpp Packet-opt.cpp Window-opt.cpp
 RECEIVER_SOURCES = wReceiver-base.cpp Logger-base.cpp
-RECEIVER_OPT_SOURCES = wReceiver-opt.cpp Logger-opt.cpp
+RECEIVER_OPT_SOURCES = wReceiver-opt.cpp Logger-base.cpp
 
 # Object files
 SENDER_OBJECTS = $(SENDER_SOURCES:.cpp=.o)
@@ -46,7 +46,7 @@ $(RECEIVER_OPT_EXECUTABLE): $(RECEIVER_OPT_OBJECTS)
 
 # Clean up build artifacts
 clean:
-	rm -f	$(SENDER_OBJECTS) $(RECEIVER_OBJECTS) $(SENDER_OPT_OBJECTS) $(RECEIVER_OPT_OBJECTS)\
+	rm -f	$(SENDER_OBJECTS) $(RECEIVER_OBJECTS) $(SENDER_OPT_OBJECTS) $(RECEIVER_OPT_OBJECTS) \
 			$(SENDER_EXECUTABLE) $(RECEIVER_EXECUTABLE) $(SENDER_OPT_EXECUTABLE) $(RECEIVER_OPT_EXECUTABLE)
 
 # Phony targets

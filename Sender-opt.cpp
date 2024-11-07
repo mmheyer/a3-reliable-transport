@@ -10,6 +10,7 @@
 #include <random>
 #include <fcntl.h>
 #include <unistd.h>
+#include <chrono>
 #include "Sender-opt.hpp"
 #include "Logger-opt.hpp"
 #include "Window-opt.hpp"
@@ -41,6 +42,8 @@ SenderOpt::~SenderOpt() {
 
 // Initiates the connection with a START packet and waits for an ACK
 void SenderOpt::startConnection() {
+    // randSeqNum = 1 + (std::rand() % 4294967295);
+
     // Set up the random number generator
     std::random_device rd;  // Seed generator
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
@@ -51,40 +54,29 @@ void SenderOpt::startConnection() {
     // Generate the random sequence number
     randSeqNum = dis(gen);
 
-    // Send the start packet
+    // send the start packet
     PacketOpt startPacket(STARTOPT, {}, randSeqNum);  // Sequence number for START
     sendPacket(startPacket, true);
 
-    // Timer for 500 ms
-    auto startTime = std::chrono::steady_clock::now();
-    bool ackReceived = false;
-
-    while (!ackReceived) {
-        // Attempt to receive the ACK packet
+    bool startAcked = false;
+    while (!startAcked) {
+        // attempt to receive the ACK packet
         PacketOpt ackPacket = receiveAck();
 
-        // Check if the packet type indicates a timeout (type 4 in this context)
+        // if the packet type is 4, recv timed out and we need to retransmit
         if (ackPacket.getType() == 4) {
-            auto currentTime = std::chrono::steady_clock::now();
-            auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count();
-
-            if (elapsedTime >= 500) {
-                std::cerr << "Timed out. Retransmitting START packet...\n";
-                sendPacket(startPacket, false);
-                startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
-            }
-        } 
-        // If the checksum or seqNum is incorrect, retransmit the packet
-        else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
-            std::cerr << "Invalid ACK received. Retransmitting START packet...\n";
+            std::cerr << "Timed out. Retransmitting packet...\n";
             sendPacket(startPacket, false);
-            startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
+        }
+        // if the ACK is received but the checksum or seqnum is incorrect, retransmit the packet
+        else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
+            sendPacket(startPacket, false);
         } 
-        // If valid ACK is received, mark the connection as started
+        // otherwise, remove start packet from the window and break out of the loop
         else {
             window->removeAcknowledgedPackets(1);
             std::cout << "Connection started successfully.\n";
-            ackReceived = true;
+            startAcked = true;
         }
     }
 }
@@ -111,48 +103,33 @@ void SenderOpt::sendData(const std::string& filename) {
             offset += chunkSize;
         }
 
+        // update socket timeout
+        updateSocketTimeout();
+
         // Receive ACKs and handle window movement
         PacketOpt ackPacket = receiveAck();
 
-        // if we received an ACK
-        if (ackPacket.getType() == ACKOPT) {
-            // if the checksum is valid
-            if (isAckValid(ackPacket)) {
-                // mark the packet as ACKed
-                window->markPacketAsAcked(ackPacket.getSeqNum());
-
-                // advance window for any ACKed packets
-                window->determineWindowAdvance();
+        // if the packet type is 4, recv timed out and we need to retransmit all the packets
+        if (ackPacket.getType() == 4) {
+            // find seq nums for the packets that have timed out and retransmit them
+            std::vector<unsigned int> timedOutSeqNums = window->getTimedOutPacketSeqNums();
+            for (unsigned int seqNum : timedOutSeqNums) {
+                // retransmit the packet
+                sendPacket(*(window->getPacketWithSeqNum(seqNum)), false);
             }
-
-            // we want to check for more ACKs before checking timeouts, so continue to next iteration
-            continue;
         }
+        // if the checksum is valid and we received an ACK for a packet after expected packet in the window
+        else if (isAckValid(ackPacket)) {
+            // size_t ackedPackets = ackPacket.getSeqNum() - static_cast<unsigned int>(window->getNextSeqNum());
+            // window->removeAcknowledgedPackets(ackedPackets);
 
-        // there was no ACK to be received, 
-        // so get sequence numbers of the packets that have not been ACKed and timed out
-        std::vector<unsigned int> timedOutSeqNums = window->getTimedOutPacketSeqNums();
+            // mark the packet as ACKed
+            window->markPacketAsAcked(ackPacket.getSeqNum());
 
-        // retransmit all packets in the window that have not been ACKed and timed out
-        for (unsigned int seqNum : timedOutSeqNums) {
-            // retransmit packet
-            std::cout << "Retransmitting packet with seq num " << seqNum << std::endl;
-            sendPacket(*(window->getPacketWithSeqNum(seqNum)), false);
-        }       
-
-        // // if the packet type is 4, recv timed out and we need to retransmit all the packets
-        // // now if the packet type is 4, recv time out and we only need to retransmit the packet that timed out
-        // if (ackPacket.getType() == 4) {
-        //     for (const Packet& packet : window->getPackets()) {
-        //         sendPacket(packet, false);
-        //     }
-        // }
-        // // if the checksum is valid and we received an ACK for a packet after expected packet in the window
-        // else if (isAckValid(ackPacket) && ackPacket.getSeqNum() > window->getNextSeqNum()) {
-        //     size_t ackedPackets = ackPacket.getSeqNum() - static_cast<unsigned int>(window->getNextSeqNum());
-        //     window->removeAcknowledgedPackets(ackedPackets);
-        // } 
-        // // checksum was invalid or seqnum was for same packet, so drop the packet
+            // advance the window as necessary
+            window->determineWindowAdvance();
+        } 
+        // checksum was invalid or seqnum was for same packet, so drop the packet
     }
 }
 
@@ -161,36 +138,20 @@ void SenderOpt::endConnection() {
     PacketOpt endPacket(ENDOPT, {}, randSeqNum);  // Sequence number for END should match START
     sendPacket(endPacket, true);
 
-    // Timer for 500 ms
-    auto startTime = std::chrono::steady_clock::now();
-    bool ackReceived = false;
-
-    while (!ackReceived) {
-        // Attempt to receive the ACK packet
-        PacketOpt ackPacket = receiveAck();
-
-        // Check if the packet type indicates a timeout (type 4 in this context)
-        if (ackPacket.getType() == 4) {
-            auto currentTime = std::chrono::steady_clock::now();
-            auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count();
-
-            if (elapsedTime >= 500) {
-                std::cerr << "Timed out. Retransmitting END packet...\n";
-                sendPacket(endPacket, false);
-                startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
-            }
-        }
-        // If the checksum or seqNum is incorrect, retransmit the packet
-        else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != endPacket.getSeqNum()) {
-            std::cerr << "Invalid ACK for END packet. Retrying...\n";
-            sendPacket(endPacket, false);
-            startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
-        }
-        // If valid ACK is received, mark the connection as ended
-        else {
-            std::cout << "Connection ended successfully.\n";
-            ackReceived = true;
-        }
+    PacketOpt ackPacket = receiveAck();
+    // if the packet type is 4, recv timed out so retransmit packet
+    if (ackPacket.getType() == 4) {
+        std::cerr << "Timed out. Retransmitting packet...\n";
+        sendPacket(endPacket, false);
+    }
+    // if the checksum or seqnum is incorrect, retransmit the packet
+    if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != endPacket.getSeqNum()) {
+        std::cerr << "Invalid ACK for END packet. Retrying...\n";
+        sendPacket(endPacket, false);
+    } 
+    // otherwise, the connection was ended successfully
+    else {
+        std::cout << "Connection ended successfully.\n";
     }
 }
 
@@ -233,15 +194,43 @@ void SenderOpt::createUDPSocket(int receiverPort, std::string& receiverIP) {
         throw std::runtime_error("Invalid receiver IP address");
     }
 
-    // Set the socket to non-blocking mode using fcntl
-    int flags = fcntl(sockfd, F_GETFL, 0);
-    if (flags < 0) {
-        perror("fcntl failed to get flags");
+    // Set a 500-millisecond receive timeout
+    struct timeval timeout;
+    timeout.tv_sec = 0;        // Seconds
+    timeout.tv_usec = 500000;  // Microseconds (500 ms)
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+        perror("setsockopt failed");
         close(sockfd);
         exit(1);
     }
-    if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        perror("fcntl failed to set non-blocking mode");
+}
+
+// Updates the socket timeout based on the minimum remaining time of packets in the window
+void SenderOpt::updateSocketTimeout() {
+    if (window->getAllPacketInfo().empty()) {
+        return; // No packets in the window, no need to update the timeout
+    }
+
+    auto currentTime = std::chrono::steady_clock::now();
+    long minTimeout = 500; // Default timeout in milliseconds
+
+    for (const auto& packetInfo : window->getAllPacketInfo()) {
+        if (!packetInfo.packetIsAcked()) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - packetInfo.getSentTime()).count();
+            long remainingTime = 500 - elapsed;
+            if (remainingTime > 0 && remainingTime < minTimeout) {
+                minTimeout = remainingTime;
+            }
+        }
+    }
+
+    // Set the new timeout
+    struct timeval timeout;
+    timeout.tv_sec = minTimeout / 1000;
+    timeout.tv_usec = (minTimeout % 1000) * 1000;
+
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+        perror("setsockopt failed to update timeout");
         close(sockfd);
         exit(1);
     }
@@ -254,11 +243,19 @@ void SenderOpt::sendPacket(const PacketOpt& packet, bool isFirstSend) {
     std::vector<char> buffer(totalSize);
 
     std::memcpy(buffer.data(), &networkHeader, sizeof(PacketOptHeader));
-    std::memcpy(buffer.data() + sizeof(PacketOptHeader), packet.getData().data(), packet.getLength());
+    if (packet.getLength() > 0) {
+        std::memcpy(buffer.data() + sizeof(PacketOptHeader), packet.getData().data(), packet.getLength());
+    }
 
     // Send the packet over the socket
-    sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
-    std::cout << "Packet sent, waiting for ACK..." << std::endl;
+    ssize_t bytesSent = sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
+    if (bytesSent == -1) {
+        perror("sendto failed");
+        // Alternatively, you can log a custom error message:
+        // std::cerr << "sendto failed: " << strerror(errno) << std::endl;
+    } else {
+        std::cout << "Bytes sent: " << bytesSent << std::endl;
+    }
 
     // Log the packet transmission
     logger->logPacket(packet.getHeader());
@@ -287,7 +284,8 @@ PacketOpt SenderOpt::receiveAck() {
 
     // Error handling if receiving failed
     if (receivedBytes < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
-        // No ACKs are being received, so return a packet with a type of 4 to indicate timeout
+        // std::cout << "Timeout reached, retransmitting packet..." << std::endl;
+        // return a packet with a type of 4 to indicate timeout
         PacketOpt noPacket(4);
         return noPacket;
     }
