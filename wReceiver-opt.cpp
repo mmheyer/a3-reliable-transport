@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <map>
 #include <netinet/in.h>
+#include <sys/types.h>
+#include <cstdio> // For perror()
 #include "Packet-opt.hpp"
 #include "Logger-opt.hpp"
 #include "crc32.h"
@@ -94,11 +96,12 @@ WReceiver::WReceiver(int port, int window_size, string output_dir, string log_fi
         addr.sin_port = htons(static_cast<uint16_t>(port));
 
         // bind to port 
-        if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-            cout << "Bind failed" << endl;
-            exit(1);
-        }
-        cout << "Bound to port" << endl;
+        // if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        //     cout << "Bind failed" << endl;
+        //     exit(1);
+        // }
+        // cout << "Bound to port" << endl;
+        bind(sockfd, (struct sockaddr *) &addr, sizeof(addr));
 }
 
 void writeToFile(const std::vector<char>& data, int index){

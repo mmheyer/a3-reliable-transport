@@ -1,439 +1,270 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <string>
-#include <cstdlib>
-#include <sys/socket.h>
 #include <cstring>
+#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <chrono>
-#include <random>
-#include "Sender-base.hpp"
-#include "Logger-base.hpp"
-#include "Window-base.hpp"
+#include <map>
 #include "Packet-base.hpp"
+#include "Logger-base.hpp"
+#include "crc32.h"
 
-#define BUFLEN 1472
+using namespace std; 
 
-const int PORT = 9000; // Port to listen on, adjust as necessary
-const size_t CHUNK_SIZE = 1456;
 
-// constructor
-Sender::Sender(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile)
-    : sockfd(0), randSeqNum(0) {
-    // setup UDP socket
-    createUDPSocket(receiverPort, receiverIP);
-    
-    // create logger
-    logger = new Logger(logFile);
+class Packet1 {
+    public:
+		vector<char> data;
+	
+    	PacketHeader header;
+        Packet1(){
+            header.checkSum = 0; 
+            header.type = 0;
+            header.length = 0; 
+            header.seqNum = 0;
+        };
 
-    // create window
-    window = new Window(windowSize);
+		Packet1(const char*buffer, ssize_t s){
+            //initialize packet info and packet header info
+            header.type = ntohl(*(reinterpret_cast<const unsigned int*>(buffer)));
+            header.seqNum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 4)));
+            header.length = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 8)));
+            header.checkSum = ntohl(*(reinterpret_cast<const unsigned int*>(buffer + 12)));
+            
+            data.resize( s - sizeof(header));
+            memcpy(data.data(), buffer + sizeof(header),  s - sizeof(header));
+
+        };
+
+        void toBuffer(char* buffer) const {
+            memcpy(buffer, &header.type, sizeof(header.type));
+            memcpy(buffer + 4, &header.seqNum, sizeof(header.seqNum));
+            memcpy(buffer + 8, &header.length, sizeof(header.length));
+            memcpy(buffer + 12, &header.checkSum, sizeof(header.checkSum));
+           
+        }
+        void print() const {
+            std::cout << "Packet Info:\n";
+            std::cout << "  Type: " << ntohl(header.type) << "\n";
+            std::cout << "  Sequence Number: " << ntohl(header.seqNum) << "\n";
+            std::cout << "  Length: " << ntohl(header.length) << "\n";
+            std::cout << "  Checksum: " << ntohl(header.checkSum) << "\n";
+            
+        }
+};
+ 
+class WReceiver { 
+    public: 
+        WReceiver(int port, int window_size, string output_dir, string log_file);
+        void startReceiving();
+
+    private:
+        int sockfd;
+        struct sockaddr_in addr, client;
+        socklen_t caddr_len;
+
+        int port; 
+        int window_size; 
+        string output_dir;
+        string log_file;
+
+        bool validateChecksum(const char* data, int length, unsigned int receivedChecksum);
+        void handlePacket(const PacketHeader& header, const char* data, int length);
+};
+
+WReceiver::WReceiver(int port, int window_size, string output_dir, string log_file):
+    port(port), window_size(window_size), output_dir(output_dir), log_file(log_file){
+        //socket, bind, listen
+        // initialize socket
+        caddr_len = sizeof(client);
+
+        sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if(sockfd < 0){
+            cout << "Socket Creation Error" << endl;
+            exit(1);
+        }
+        cout << "Socket created" << endl;
+
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET; 
+        addr.sin_addr.s_addr = INADDR_ANY; 
+        addr.sin_port = htons(static_cast<uint16_t>(port));
+
+        //bind to port 
+        // if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        //     cout << "Bind failed" << endl;
+        //     exit(1);
+        // }
+        // cout << "Bound to port" << endl;
+        bind(sockfd, (struct sockaddr *) &addr, sizeof(addr));
 }
 
-// destructor
-Sender::~Sender() {
-    delete logger;
-    delete window;
-}
-
-// Initiates the connection with a START packet and waits for an ACK
-void Sender::startConnection() {
-    // randSeqNum = 1 + (std::rand() % 4294967295);
-
-    // Set up the random number generator
-    std::random_device rd;  // Seed generator
-    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-    
-    // Define the range (0 to max value of unsigned int)
-    std::uniform_int_distribution<unsigned int> dis(1, std::numeric_limits<unsigned int>::max());
-
-    // Generate the random sequence number
-    randSeqNum = dis(gen);
-
-    // send the start packet
-    Packet startPacket(START, {}, randSeqNum);  // Sequence number for START
-    sendPacket(startPacket, true);
-
-    // attempt to receive the ACK packet
-    Packet ackPacket = receiveAck();
-
-    // if the packet type is 4, recv timed out and we need to retransmit
-    if (ackPacket.getType() == 4) {
-        std::cerr << "Timed out. Retransmitting packet...\n";
-        sendPacket(startPacket, false);
-    } 
-    // if the checksum or seqnum is incorrect, retransmit the packet
-    else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
-        sendPacket(startPacket, false);
-    } 
-    // otherwise, remove start packet from the window
-    else {
-        window->removeAcknowledgedPackets(1);
-        std::cout << "Connection started successfully.\n";
+void writeToFile(const std::vector<char>& data, int index){
+    string filename = "FILE-" + std::to_string(index) + ".out";
+    ofstream outfile(filename, std::ios::binary | std::ios::app);
+    if(!outfile){
+        cout << "Failed to open file\n";
+        return;
     }
+    outfile.write(data.data(), data.size());
+    outfile.close();
+    cout << "[DEBUG] data written to " << filename << endl;
 }
 
-// Reads the file and transmits it in chunks using DATA packets
-void Sender::sendData(const std::string& filename) {
-    std::ifstream file(filename, std::ios::binary);
-    if (!file) {
-        throw std::runtime_error("Failed to open file for reading");
-    }
+void WReceiver::startReceiving(){
+    bool connection = false; 
+    int next_seq = 0; 
+    int counter = -1; 
+    ofstream output_file;
+    int startACK = 0; 
+    Packet1 ackPacket;
+    Logger logOutput(log_file);
 
-    std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    size_t offset = 0;
-    unsigned int dataSeqNum = 0;
-
-    while (offset < buffer.size() || window->hasUnacknowledgedPackets()) {
-        // Send packets within the window
-        while (window->canAddPacket() && offset < buffer.size()) {
-            size_t chunkSize = std::min(CHUNK_SIZE, buffer.size() - offset);
-            std::vector<char> chunk(buffer.begin() + static_cast<long>(offset), buffer.begin() + static_cast<long>(offset) + static_cast<long>(chunkSize));
-
-            Packet dataPacket(DATA, chunk, dataSeqNum++);
-            sendPacket(dataPacket, true);
-            offset += chunkSize;
+    cout << "[Debug] Start receiving" << endl;
+    map<int, Packet1> receivedPackets; //seq num, packet info
+    while(true){
+        char buffer[1500]; //8 byte udp header, 20 byte tcp header, 1472 data
+        
+        ssize_t recv_len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&client, &caddr_len);
+        if (recv_len < 0) {
+            cout << "ERROR: Recv error" << endl;
+            continue;
         }
 
-        // Receive ACKs and handle window movement
-        Packet ackPacket = receiveAck();
+        Packet1 p(buffer, recv_len); //received packet
+        logOutput.logPacket(p.header);
+        p.print(); 
+        cout << "[Debug] initialized packet" << endl;
 
-        // if the packet type is 4, recv timed out and we need to retransmit all the packets
-        if (ackPacket.getType() == 4) {
-            for (const Packet& packet : window->getPackets()) {
-                sendPacket(packet, false);
+        //check checksum 
+        char ACK[1500];
+
+        //only handles packet if checksum is right, does nothing if it was wrong
+        if(p.header.type == 0){ //START
+            cout << "[Start Debug] START received" << endl;
+            //start stuff
+            if(connection){ //drops packet
+                cout << "Packet dropped due to existing connection/transfer" << endl;
+                continue;
+            } else{
+                connection = true; 
+                next_seq = 0; 
+
+                //ACK FOR START
+                
+                ackPacket.header.type = htonl(3); // 3 = ack
+                startACK = p.header.seqNum;
+                ackPacket.header.seqNum = htonl(p.header.seqNum); //ack with start packets seqnum
+
+                ackPacket.toBuffer(ACK);
+              //  ackPacket.print(); 
+                // Send the packet
+                logOutput.logPacket(ackPacket.header);
+                ssize_t bytes_sent = sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
+                if (bytes_sent < 0) {
+                    std::cout << "ERROR: Failed to send the START ACK\n";
+                } else {
+                    std::cout << "START ACK sent successfully\n";
+                }
+                counter++;
+                output_file.open(output_dir + "/FILE-" + std::to_string(counter) + ".out", std::ios::binary);
+                
+                
+            }
+        } else if(p.header.type == 1){ //END
+            cout << "[End Debug] END received" << endl;
+            //end
+            connection = false;
+            //ACK
+            ackPacket.header.type = htonl(3); // 3 = ack
+            ackPacket.header.seqNum = htonl(startACK); //ack with start packets seqnum
+            ackPacket.toBuffer(ACK);
+            //ackPacket.print(); 
+
+            logOutput.logPacket(ackPacket.header);
+            ssize_t bytes_sent =  sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
+            if (bytes_sent < 0) {
+                cout << "ERROR: Failed to send packet" << endl;
+            } else {
+                std::cout << "END ACK sent successfully\n";
+            }
+
+            output_file.close();
+            //TODO: END
+        } else if(p.header.type == 2){ //DATA
+            cout << "[Data Debug] DATA Received" << endl;
+
+             for (ssize_t i = 0; i < recv_len; ++i) {
+                if (std::isprint(buffer[i])) {
+                    std::cout << (char)buffer[i];  // Print printable characters
+                } else {
+                    std::cout << ".";  // Print "." for non-printable characters
+                }
+            }
+            std::cout << std::endl;
+
+            int c = p.header.checkSum; 
+            int calculated_c = crc32(p.data.data(), p.data.size());
+            cout << c << "*" << calculated_c << endl; 
+            if(c == calculated_c){
+            //only do stuff if valid crc
+            if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
+                //if packet has correct crc and is in window size-> add to map
+                receivedPackets[p.header.seqNum] = p;
+                cout << "NEXT SEQ " << next_seq << endl;
+                cout << "HEADEr SWQ " << ntohl(p.header.seqNum) << endl;
+                if(int(p.header.seqNum) == next_seq){
+                    cout << endl;
+                    cout << "RIGHT SEQ NUM RECEIVED" << endl;
+                    while(receivedPackets.find(next_seq) != receivedPackets.end()){
+                        //iterates through map
+                        Packet1 order = receivedPackets[next_seq];
+                        receivedPackets.erase(next_seq);
+                        //TODO write to output file
+                        writeToFile(order.data, counter);
+                    } 
+                    next_seq++;
+                }
+                
+                ackPacket.header.type = htonl(3); // 3 = ack
+                ackPacket.header.seqNum = htonl(next_seq);
+                ackPacket.toBuffer(ACK);
+                ackPacket.print(); 
+                
+                logOutput.logPacket(ackPacket.header);
+                ssize_t bytes_sent =  sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
+                if (bytes_sent < 0) {
+                    cout << "Failed to send packet" << endl;
+                } else {
+                    std::cout << "DATA ACK sent successfully\n";
+                }
+                
+            } else{
+                cout << "packet drop" << endl;
+            }
+
+            
             }
         }
-        // if the checksum is valid and we received an ACK for a packet after expected packet in the window
-        else if (isAckValid(ackPacket) && ackPacket.getSeqNum() > window->getNextSeqNum()) {
-            size_t ackedPackets = ackPacket.getSeqNum() - static_cast<unsigned int>(window->getNextSeqNum());
-            window->removeAcknowledgedPackets(ackedPackets);
-        } 
-        // checksum was invalid or seqnum was for same packet, so drop the packet
+                
     }
 }
 
-// Terminates the connection with an END packet
-void Sender::endConnection() {
-    Packet endPacket(END, {}, randSeqNum);  // Sequence number for END should match START
-    sendPacket(endPacket, true);
+int main(int argc, char* argv[]){
+    //./wReceiver <port-num> <window-size> <output-dir> <log>
 
-    Packet ackPacket = receiveAck();
-    // if the packet type is 4, recv timed out so retransmit packet
-    if (ackPacket.getType() == 4) {
-        std::cerr << "Timed out. Retransmitting packet...\n";
-        sendPacket(endPacket, false);
+    if (argc != 5) {
+        printf("Usage: ./wReceiver <port-num> <window-size> <output-dir> <log>\n");
+        return -1;
     }
-    // if the checksum or seqnum is incorrect, retransmit the packet
-    if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != endPacket.getSeqNum()) {
-        std::cerr << "Invalid ACK for END packet. Retrying...\n";
-        sendPacket(endPacket, false);
-    } 
-    // otherwise, the connection was ended successfully
-    else {
-        std::cout << "Connection ended successfully.\n";
-    }
-}
+    int port = atoi(argv[1]);
+    int window_size = atoi(argv[2]);
+    string output_dir = argv[3];
+    string log_file = argv[4];
 
-// create a UDP socket and bind the socket to the port
-void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
-    struct sockaddr_in si_me;
-
-    // Create a UDP socket
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
-        perror("socket creation failed");
-        exit(1);
-    }
-
-    // Zero out the data structure
-    memset((char *)&si_me, 0, sizeof(si_me));
-
-    // Set necessary parameters
-    si_me.sin_family = AF_INET;
-    si_me.sin_port = htons(PORT);
-    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    // Bind socket to port (if necessary)
-    if (bind(sockfd, (struct sockaddr *)&si_me, sizeof(si_me)) == -1) {
-        perror("bind failed");
-        close(sockfd);
-        exit(1);
-    }
-    std::cout << "UDP socket created and bound to port " << PORT << std::endl;
-
-    // Zero out the receiver address structure
-    memset(&receiverAddr, 0, sizeof(receiverAddr));
-
-    // Set up receiver address
-    receiverAddr.sin_family = AF_INET;
-    receiverAddr.sin_port = htons(static_cast<uint16_t>(receiverPort));
-
-    // Convert the receiver IP to binary form and store in receiverAddr
-    if (inet_pton(AF_INET, receiverIP.c_str(), &receiverAddr.sin_addr) <= 0) {
-        close(sockfd);
-        throw std::runtime_error("Invalid receiver IP address");
-    }
-
-    // Set a 500-millisecond receive timeout
-    struct timeval timeout;
-    timeout.tv_sec = 0;        // Seconds
-    timeout.tv_usec = 500000;  // Microseconds (500 ms)
-    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-        perror("setsockopt failed");
-        close(sockfd);
-        exit(1);
-    }
-}
-
-void Sender::sendPacket(const Packet& packet, bool isFirstSend) {
-    // Prepare the packet data in a contiguous buffer
-    PacketHeader networkHeader = packet.getNetworkOrderHeader();
-    size_t totalSize = sizeof(PacketHeader) + packet.getLength();
-    std::vector<char> buffer(totalSize);
-
-    std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
-    std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
-
-    // Send the packet over the socket
-    sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
-    std::cout << "Packet sent, waiting for ACK..." << std::endl;
-
-    // Log the packet transmission
-    logger->logPacket(packet.getHeader());
-
-    // Add the packet to the window for tracking if this is the first send
-    if(isFirstSend) window->addPacket(packet);
-}
-
-Packet Sender::receiveAck() {
-    // Buffer to hold the incoming packet data
-    const size_t bufferSize = sizeof(PacketHeader) + CHUNK_SIZE;
-    std::vector<char> buffer(bufferSize);
-
-    // Receive the ACK packet into the buffer
-    sockaddr_in senderAddr;
-    socklen_t senderAddrLen = sizeof(senderAddr);
-    ssize_t receivedBytes = recvfrom(sockfd, buffer.data(), bufferSize, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
-
-    // Error handling if receiving failed
-    if (receivedBytes < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
-        std::cout << "Timeout reached, retransmitting packet..." << std::endl;
-        // return a packet with a type of 4 to indicate timeout
-        Packet noPacket(4);
-        return noPacket;
-    }
-    
-    // Create the packet using the data in the buffer
-    Packet ackPacket(buffer.data(), bufferSize);
-
-    // log the packet
-    logger->logPacket(ackPacket.getHeader());
-
-    return ackPacket;
-}
-
-// void Sender::sendNewPacket(const Packet& packet) {
-//     // Prepare the packet data in a contiguous buffer
-//     PacketHeader networkHeader = packet.getNetworkOrderHeader();
-//     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
-//     std::vector<char> buffer(totalSize);
-
-//     std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
-//     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
-
-//     // Send the packet over the socket
-//     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
-
-//     // Log the packet transmission
-//     logger->logPacket(packet.getHeader());
-
-//     // Add the packet to the window for tracking since this is the first send
-//     window->addPacket(packet);
-// }
-
-// void Sender::retransmitPacket(const Packet& packet) {
-//     std::cout << "Retransmitting packet with sequence number: " << packet.getSeqNum() << std::endl;
-
-//     // Prepare the packet data in a contiguous buffer (same as in sendNewPacket)
-//     PacketHeader networkHeader = packet.getNetworkOrderHeader();
-//     size_t totalSize = sizeof(PacketHeader) + packet.getLength();
-//     std::vector<char> buffer(totalSize);
-
-//     std::memcpy(buffer.data(), &networkHeader, sizeof(PacketHeader));
-//     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.getData().data(), packet.getLength());
-
-//     // Send the packet over the socket
-//     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
-
-//     // Log the retransmission, but do not add to the window again
-//     logger->logPacket(packet.getHeader());
-// }
-
-// // Receives an ACK and returns it as a Packet
-// Packet Sender::receiveAck() {
-//     // Buffer to hold the incoming packet data
-//     const size_t bufferSize = sizeof(PacketHeader) + CHUNK_SIZE;
-//     std::vector<char> buffer(bufferSize);
-
-//     // Receive the ACK packet into the buffer
-//     sockaddr_in senderAddr;
-//     socklen_t senderAddrLen = sizeof(senderAddr);
-//     ssize_t receivedBytes = recvfrom(sockfd, buffer.data(), bufferSize, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
-
-//     // Error handling if receiving failed
-//     if (receivedBytes < static_cast<ssize_t>(sizeof(PacketHeader))) {
-//         throw std::runtime_error("Failed to receive a complete ACK packet");
-//     }
-    
-//     // Create the packet using the data in the buffer
-//     Packet ackPacket(buffer.data(), bufferSize);
-
-//     return ackPacket;
-// }
-
-// void Sender::handleTimeout() {
-//     auto currentTime = std::chrono::steady_clock::now();
-//     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastAckTime);
-//     if (duration.count() >= 500) {
-//         std::cout << "Timeout occurred. Retransmitting all packets in the window.\n";
-        
-//         // Retransmit all packets in the window
-//         for (const Packet& packet : window->getPackets()) {
-//             retransmitPacket(packet);
-//         }
-
-//         // Reset the timer
-//         lastAckTime = std::chrono::steady_clock::now();
-//     }
-// }
-
-// Validates the received ACK packet by checking the checksum
-bool Sender::isAckValid(const Packet& ackPacket) {
-    return ackPacket.getCheckSum() == ackPacket.calculateCheckSum();
-}
-
-int main(int argc, char* argv[]) {
-    if (argc != 6) {
-        std::cerr << "Usage: ./Sender <receiver-IP> <receiver-port> <window-size> <input-file> <log>\n";
-        return 1;
-    }
-
-    // Parse arguments
-    std::string receiverIP = argv[1];
-    int receiverPort = std::atoi(argv[2]);
-    int windowSize = std::atoi(argv[3]);
-    std::string inputFile = argv[4];
-    std::string logFile = argv[5];
-
-    // Validate arguments
-    if (receiverPort <= 0 || receiverPort > 65535) {
-        std::cerr << "Error: Invalid port number. It must be between 1 and 65535.\n";
-        return 1;
-    }
-    if (windowSize <= 0) {
-        std::cerr << "Error: Window size must be a positive integer.\n";
-        return 1;
-    }
-
-    // Display parsed arguments for confirmation
-    std::cout << "Receiver IP: " << receiverIP << "\n"
-              << "Receiver Port: " << receiverPort << "\n"
-              << "Window Size: " << windowSize << "\n"
-              << "Input File: " << inputFile << "\n"
-              << "Log File: " << logFile << "\n";
-
-    // Create Sender
-    try {
-        Sender sender(receiverIP, receiverPort, windowSize, logFile);
-        sender.startConnection();
-        sender.sendData(inputFile);
-        sender.endConnection();
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
-        std::cout << "Error: " << e.what() << "\n";
-    }
-
-    return 0;
-}
-
-// // Calculates the checksum for a packet (placeholder for actual CRC implementation)
-// unsigned int Sender::calculateChecksum(const Packet& packet) {
-//     // Use a provided CRC function or custom checksum calculation here
-//     return crc32(packet->data.data(), packet->data.size());  // Placeholder
-// }
-
-// void die(const char *s) {
-//     perror(s);
-//     exit(1);
-// }
-
-// void Sender::run() {
-//     // read input file
-//     readInputFile(inputFile);
-
-//     // set up UDP port
-//     createUDPSocket(receiverPort, receiverIP);
-
-//     // send start message
-//     Packet startPacket(0);
-//     sendPacket(startPacket);
-
-//     // start timer for start message
-//     start_time = get_current_time();
-
-//     // wait for start ACK
-
-//     // send packets
-    
-//     // send end message
-// }
-
-// void Sender::recvMsg() {
-//     struct sockaddr_in si_me, si_other;
-//     int s, recv_len;
-//     socklen_t slen = sizeof(si_other);
-//     std::vector<char> buf;
-    
-//     while(1) {
-//         // Try to receive some data, this is a blocking call
-//         if ((recv_len = recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen)) == -1) {
-//             die("recvfrom()");
-//         }
-
-//         // Print the details of the client/peer and the data received
-//         printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-//         printf("Data: %s\n" , buf);
-
-        
-//     }
-// }
-
-// void Sender::sendPacket(const Packet& packet) {
-//     // Calculate the total size: header + data
-//     size_t totalSize = sizeof(PacketHeader) + packet.data.size();
-
-//     // Create a buffer to hold the entire packet
-//     std::vector<char> buffer(totalSize);
-
-//     // Copy the header into the buffer
-//     std::memcpy(buffer.data(), &packet.header, sizeof(PacketHeader));
-
-//     // Copy the data into the buffer after the header
-//     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.data.data(), packet.data.size());
-
-//     // Send the contiguous buffer over the socket
-//     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
-
-//     // Log and add to the window as before
-//     logger.logPacket(packet);
-//     window.addPacket(packet);
-// }
-
-// // Retransmit all packets currently in the window
-// void Sender::retransmitAll() {
-//     std::cout << "Retransmitting all packets in the window...\n";
-//     for (const Packet& packet : window.getPackets()) {
-//         retransmit(packet);
-//     }
-// }
+    WReceiver w(port, window_size, output_dir, log_file);
+    w.startReceiving();
+    return -1; 
+} 
