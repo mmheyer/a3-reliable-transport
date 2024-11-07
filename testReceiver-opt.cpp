@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <unordered_set>
+#include "crc32.h"
 
 #define PORT 8888
 #define WINDOW_SIZE 3
@@ -26,12 +27,9 @@ enum PacketType {
     ACK = 3
 };
 
+// Calculate CheckSum using starter_files
 unsigned int calculateChecksum(const std::vector<char>& data) {
-    unsigned int checksum = 0;
-    for (char byte : data) {
-        checksum += byte;
-    }
-    return checksum;
+    return crc32(data.data(), data.size());
 }
 
 class TestReceiver {
@@ -78,7 +76,7 @@ void TestReceiver::run() {
     char buffer[1472];
     while (true) {
         ssize_t recv_len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&si_other, &slen);
-        if (recv_len < sizeof(PacketHeader)) {
+        if (recv_len < static_cast<ssize_t>(sizeof(PacketHeader))) {
             std::cerr << "Received packet is too small" << std::endl;
             continue;
         }
@@ -128,26 +126,27 @@ void TestReceiver::processPacket(const PacketHeader& header, const std::vector<c
             return;
         }
 
-        if (header.seqNum >= expectedSeqNum + WINDOW_SIZE) {
+        if (header.seqNum >= static_cast<const unsigned int>(expectedSeqNum + WINDOW_SIZE)) {
             std::cerr << "Packet outside window, dropping: seqNum = " << header.seqNum << std::endl;
             return;
         }
 
         if (!verifyChecksum(header, data)) {
             std::cerr << "Checksum mismatch, dropping packet: seqNum = " << header.seqNum << std::endl;
+            std::cerr << "Checksum in header = " << header.checkSum << " Calculated checksum = " <<  calculateChecksum(data) << std::endl;
             return;
         }
 
-        if (header.seqNum >= expectedSeqNum) {
+        if (header.seqNum >= static_cast<const unsigned int>(expectedSeqNum)) {
             // Write data if the packet has not already been received
             if (receivedSeqNums.find(header.seqNum) == receivedSeqNums.end()) {
                 receivedSeqNums.insert(header.seqNum);
-                outFile.write(data.data(), data.size());
+                outFile.write(data.data(), static_cast<long>(data.size()));
                 std::cout << "Received and buffered DATA packet: seqNum = " << header.seqNum << std::endl;
             }
 
             // Update expectedSeqNum if current packet is the one expected
-            while (receivedSeqNums.find(expectedSeqNum) != receivedSeqNums.end()) {
+            while (receivedSeqNums.find(static_cast<const unsigned int>(expectedSeqNum)) != receivedSeqNums.end()) {
                 expectedSeqNum++;
             }
         }

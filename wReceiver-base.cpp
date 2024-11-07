@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <map>
-#include "Packet.hpp"
+#include "Packet-base.hpp"
 #include "Logger.hpp"
 #include "crc32.h"
 

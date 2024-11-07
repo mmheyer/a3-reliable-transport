@@ -5,7 +5,7 @@
 #include <vector>
 #include <chrono>
 #include "Logger.hpp"
-#include "Window.hpp"
+#include "Window-base.hpp"
 
 class Sender {
 public:
@@ -25,6 +25,7 @@ private:
     unsigned int randSeqNum;
     Logger* logger;
     Window* window;
+    // std::chrono::steady_clock::time_point lastAckTime;
 
     // helper functions
     void createUDPSocket(int receiverPort, std::string& receiverIP);

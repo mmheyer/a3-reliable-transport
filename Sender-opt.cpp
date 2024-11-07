@@ -10,10 +10,10 @@
 #include <random>
 #include <fcntl.h>
 #include <unistd.h>
-#include "Sender.hpp"
+#include "Sender-opt.hpp"
 #include "Logger.hpp"
-#include "Window.hpp"
-#include "Packet.hpp"
+#include "Window-opt.hpp"
+#include "Packet-opt.hpp"
 
 #define BUFLEN 1472
 
@@ -41,8 +41,6 @@ Sender::~Sender() {
 
 // Initiates the connection with a START packet and waits for an ACK
 void Sender::startConnection() {
-    // randSeqNum = 1 + (std::rand() % 4294967295);
-
     // Set up the random number generator
     std::random_device rd;  // Seed generator
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
@@ -53,26 +51,41 @@ void Sender::startConnection() {
     // Generate the random sequence number
     randSeqNum = dis(gen);
 
-    // send the start packet
+    // Send the start packet
     Packet startPacket(START, {}, randSeqNum);  // Sequence number for START
     sendPacket(startPacket, true);
 
-    // attempt to receive the ACK packet
-    Packet ackPacket = receiveAck();
+    // Timer for 500 ms
+    auto startTime = std::chrono::steady_clock::now();
+    bool ackReceived = false;
 
-    // if the packet type is 4, recv timed out and we need to retransmit
-    if (ackPacket.getType() == 4) {
-        std::cerr << "Timed out. Retransmitting packet...\n";
-        sendPacket(startPacket, false);
-    } 
-    // if the checksum or seqnum is incorrect, retransmit the packet
-    else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
-        sendPacket(startPacket, false);
-    } 
-    // otherwise, remove start packet from the window
-    else {
-        window->removeAcknowledgedPackets(1);
-        std::cout << "Connection started successfully.\n";
+    while (!ackReceived) {
+        // Attempt to receive the ACK packet
+        Packet ackPacket = receiveAck();
+
+        // Check if the packet type indicates a timeout (type 4 in this context)
+        if (ackPacket.getType() == 4) {
+            auto currentTime = std::chrono::steady_clock::now();
+            auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count();
+
+            if (elapsedTime >= 500) {
+                std::cerr << "Timed out. Retransmitting START packet...\n";
+                sendPacket(startPacket, false);
+                startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
+            }
+        } 
+        // If the checksum or seqNum is incorrect, retransmit the packet
+        else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != startPacket.getSeqNum()) {
+            std::cerr << "Invalid ACK received. Retransmitting START packet...\n";
+            sendPacket(startPacket, false);
+            startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
+        } 
+        // If valid ACK is received, mark the connection as started
+        else {
+            window->removeAcknowledgedPackets(1);
+            std::cout << "Connection started successfully.\n";
+            ackReceived = true;
+        }
     }
 }
 
@@ -102,18 +115,21 @@ void Sender::sendData(const std::string& filename) {
         Packet ackPacket = receiveAck();
 
         // if we received an ACK and the checksum is valid
-        if (ackPacket.getType() == ACK && isAckValid(ackPacket)) {
-            // mark the packet as ACKed
-            window->markPacketAsAcked(ackPacket.getSeqNum());
+        if (ackPacket.getType() == ACK) {
+            // if the checksum is valid
+            if (isAckValid(ackPacket)) {
+                // mark the packet as ACKed
+                window->markPacketAsAcked(ackPacket.getSeqNum());
 
-            // advance window for any ACKed packets
-            window->determineWindowAdvance();
+                // advance window for any ACKed packets
+                window->determineWindowAdvance();
+            }
 
             // we want to check for more ACKs before checking timeouts, so continue to next iteration
             continue;
         }
 
-        // we either didn't get an ACK or ACk was corrupted, 
+        // there was no ACK to be received, 
         // so get sequence numbers of the packets that have not been ACKed and timed out
         std::vector<unsigned int> timedOutSeqNums = window->getTimedOutPacketSeqNums();
 
@@ -145,20 +161,36 @@ void Sender::endConnection() {
     Packet endPacket(END, {}, randSeqNum);  // Sequence number for END should match START
     sendPacket(endPacket, true);
 
-    Packet ackPacket = receiveAck();
-    // if the packet type is 4, recv timed out so retransmit packet
-    if (ackPacket.getType() == 4) {
-        std::cerr << "Timed out. Retransmitting packet...\n";
-        sendPacket(endPacket, false);
-    }
-    // if the checksum or seqnum is incorrect, retransmit the packet
-    if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != endPacket.getSeqNum()) {
-        std::cerr << "Invalid ACK for END packet. Retrying...\n";
-        sendPacket(endPacket, false);
-    } 
-    // otherwise, the connection was ended successfully
-    else {
-        std::cout << "Connection ended successfully.\n";
+    // Timer for 500 ms
+    auto startTime = std::chrono::steady_clock::now();
+    bool ackReceived = false;
+
+    while (!ackReceived) {
+        // Attempt to receive the ACK packet
+        Packet ackPacket = receiveAck();
+
+        // Check if the packet type indicates a timeout (type 4 in this context)
+        if (ackPacket.getType() == 4) {
+            auto currentTime = std::chrono::steady_clock::now();
+            auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count();
+
+            if (elapsedTime >= 500) {
+                std::cerr << "Timed out. Retransmitting END packet...\n";
+                sendPacket(endPacket, false);
+                startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
+            }
+        }
+        // If the checksum or seqNum is incorrect, retransmit the packet
+        else if (!isAckValid(ackPacket) || ackPacket.getSeqNum() != endPacket.getSeqNum()) {
+            std::cerr << "Invalid ACK for END packet. Retrying...\n";
+            sendPacket(endPacket, false);
+            startTime = std::chrono::steady_clock::now(); // Reset the timer after retransmission
+        }
+        // If valid ACK is received, mark the connection as ended
+        else {
+            std::cout << "Connection ended successfully.\n";
+            ackReceived = true;
+        }
     }
 }
 

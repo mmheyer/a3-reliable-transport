@@ -210,24 +210,17 @@ void WReceiver::startReceiving(){
             cout << c << "*" << calculated_c << endl; 
             if(c == calculated_c){
             //only do stuff if valid crc
+            next_seq = p.header.seqNum;
             if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
-                next_seq = p.header.seqNum;
-
+                
                 //if packet has correct crc and is in window size-> add to map
                 receivedPackets[p.header.seqNum] = p;
                 cout << "NEXT SEQ " << next_seq << endl;
                 cout << "HEADEr SWQ " << ntohl(p.header.seqNum) << endl;
-                if(int(p.header.seqNum) == next_seq){
-                    cout << endl;
-                    cout << "RIGHT SEQ NUM RECEIVED" << endl;
-                    while(receivedPackets.find(next_seq) != receivedPackets.end()){
-                        //iterates through map
-                        Packet1 order = receivedPackets[next_seq];
-                        receivedPackets.erase(next_seq);
-                        //TODO write to output file
-                        writeToFile(order.data, counter);
-                    } 
-                   // next_seq++;
+                //add to map if hasnt been received before
+                if (receivedPackets.find(next_seq) == receivedPackets.end()) {
+                    receivedPackets[next_seq] = p;
+                    writeToFile(p.data, counter); // Writes the valid data to file
                 }
                 
                 ackPacket.header.type = htonl(3); // 3 = ack
