@@ -20,7 +20,7 @@ public:
     void removeAcknowledgedPackets(size_t count);
 
     // access packets in the window
-    const std::deque<PacketInfo>& getAllPacketInfo() const;
+    std::deque<PacketOpt>& getPackets();
 
     // Check if there are any unacknowledged packets in the window
     bool hasPackets() const;
@@ -34,16 +34,11 @@ public:
     // mark the packet with seqNum as ACKed
     void markPacketAsAcked(unsigned int seqNum);
 
-    // get packet with seqNum
-    const PacketOpt* getPacketWithSeqNum(unsigned int seqNum) const;
-
     size_t determineWindowAdvance();
-
-    void resetTimerForSeqNum(unsigned int seqNum);
 
 private:
     int windowSize;
-    std::deque<PacketInfo> allPacketInfo;
+    std::deque<PacketOpt> packets;
 };
 
 #endif // WINDOW_HPP

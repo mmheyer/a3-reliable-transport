@@ -28,10 +28,10 @@ private:
 
     // helper functions
     void createUDPSocket(int receiverPort, std::string& receiverIP);
-    void sendPacket(const PacketOpt& packet, bool isFirstSend);
+    void sendPacket(PacketOpt& packet, bool isFirstSend);
     PacketOpt receiveAck();
     bool isAckValid(const PacketOpt& ackPacket);
-    void SenderOpt::updateSocketTimeout()
+    void updateSocketTimeout();
 };
 
 #endif // SENDER_HPP

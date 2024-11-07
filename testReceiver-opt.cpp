@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <unordered_set>
+#include <random>
 #include "crc32.h"
 
 #define PORT 8888
@@ -27,14 +28,13 @@ enum PacketType {
     ACK = 3
 };
 
-// Calculate CheckSum using starter_files
 unsigned int calculateChecksum(const std::vector<char>& data) {
     return crc32(data.data(), data.size());
 }
 
-class TestReceiver {
+class ReceiverOpt {
 public:
-    TestReceiver();
+    ReceiverOpt();
     void run();
 
 private:
@@ -45,14 +45,17 @@ private:
     int expectedSeqNum = 0;
     std::ofstream outFile;
     std::unordered_set<unsigned int> receivedSeqNums;
+    std::mt19937 rng;
+    std::uniform_real_distribution<double> distribution;
 
     std::string generateFileName();
     void sendAck(unsigned int seqNum);
     void processPacket(const PacketHeader& header, const std::vector<char>& data);
     bool verifyChecksum(const PacketHeader& header, const std::vector<char>& data);
+    bool shouldDropPacket();
 };
 
-TestReceiver::TestReceiver() {
+ReceiverOpt::ReceiverOpt() : rng(std::random_device{}()), distribution(0.0, 1.0) {
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket creation failed");
         exit(1);
@@ -72,7 +75,7 @@ TestReceiver::TestReceiver() {
     std::cout << "Receiver is listening on port " << PORT << std::endl;
 }
 
-void TestReceiver::run() {
+void ReceiverOpt::run() {
     char buffer[1472];
     while (true) {
         ssize_t recv_len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&si_other, &slen);
@@ -89,11 +92,18 @@ void TestReceiver::run() {
         header.checkSum = ntohl(header.checkSum);
 
         std::vector<char> data(buffer + sizeof(PacketHeader), buffer + recv_len);
+
+        // Simulate packet loss
+        if (shouldDropPacket()) {
+            std::cout << "Simulating packet loss for packet with seqNum = " << header.seqNum << std::endl;
+            continue;
+        }
+
         processPacket(header, data);
     }
 }
 
-void TestReceiver::processPacket(const PacketHeader& header, const std::vector<char>& data) {
+void ReceiverOpt::processPacket(const PacketHeader& header, const std::vector<char>& data) {
     if (header.type == START) {
         if (outFile.is_open()) {
             std::cerr << "Ignored START packet while in an existing connection" << std::endl;
@@ -126,18 +136,17 @@ void TestReceiver::processPacket(const PacketHeader& header, const std::vector<c
             return;
         }
 
-        if (header.seqNum >= static_cast<const unsigned int>(expectedSeqNum + WINDOW_SIZE)) {
+        if (header.seqNum >= static_cast<unsigned int>(expectedSeqNum + WINDOW_SIZE)) {
             std::cerr << "Packet outside window, dropping: seqNum = " << header.seqNum << std::endl;
             return;
         }
 
         if (!verifyChecksum(header, data)) {
             std::cerr << "Checksum mismatch, dropping packet: seqNum = " << header.seqNum << std::endl;
-            std::cerr << "Checksum in header = " << header.checkSum << " Calculated checksum = " <<  calculateChecksum(data) << std::endl;
             return;
         }
 
-        if (header.seqNum >= static_cast<const unsigned int>(expectedSeqNum)) {
+        if (header.seqNum >= static_cast<unsigned int>(expectedSeqNum)) {
             // Write data if the packet has not already been received
             if (receivedSeqNums.find(header.seqNum) == receivedSeqNums.end()) {
                 receivedSeqNums.insert(header.seqNum);
@@ -146,7 +155,7 @@ void TestReceiver::processPacket(const PacketHeader& header, const std::vector<c
             }
 
             // Update expectedSeqNum if current packet is the one expected
-            while (receivedSeqNums.find(static_cast<const unsigned int>(expectedSeqNum)) != receivedSeqNums.end()) {
+            while (receivedSeqNums.find(static_cast<unsigned int>(expectedSeqNum)) != receivedSeqNums.end()) {
                 expectedSeqNum++;
             }
         }
@@ -156,11 +165,11 @@ void TestReceiver::processPacket(const PacketHeader& header, const std::vector<c
     }
 }
 
-bool TestReceiver::verifyChecksum(const PacketHeader& header, const std::vector<char>& data) {
+bool ReceiverOpt::verifyChecksum(const PacketHeader& header, const std::vector<char>& data) {
     return header.checkSum == calculateChecksum(data);
 }
 
-void TestReceiver::sendAck(unsigned int seqNum) {
+void ReceiverOpt::sendAck(unsigned int seqNum) {
     PacketHeader ackHeader;
     ackHeader.type = htonl(ACK);
     ackHeader.seqNum = htonl(seqNum);
@@ -174,12 +183,17 @@ void TestReceiver::sendAck(unsigned int seqNum) {
     }
 }
 
-std::string TestReceiver::generateFileName() {
+bool ReceiverOpt::shouldDropPacket() {
+    // Simulate packet loss with a probability of 30% (adjust as needed)
+    return distribution(rng) < 0.3;
+}
+
+std::string ReceiverOpt::generateFileName() {
     return FILE_PREFIX + std::to_string(fileCounter) + ".out";
 }
 
 int main() {
-    TestReceiver receiver;
+    ReceiverOpt receiver;
     receiver.run();
     return 0;
 }

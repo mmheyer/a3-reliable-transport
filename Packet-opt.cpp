@@ -47,7 +47,7 @@ PacketOptHeader PacketOpt::getNetworkOrderHeader() const {
 }
 
 // Check if the packet has timed out (e.g., if more than 500 ms have passed)
-bool PacketInfo::hasTimedOut() const {
+bool PacketOpt::hasTimedOut() const {
     auto now = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - sentTime).count();
     return duration > 500; // Timeout threshold of 500 ms

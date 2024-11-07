@@ -45,20 +45,6 @@ public:
     // Convert header to network byte order for sending
     PacketOptHeader getNetworkOrderHeader() const;
 
-private:
-    PacketOptHeader header;
-    std::vector<char> data;
-};
-
-class PacketInfo {
-public:
-    // Constructor to create a PacketInfo with the current time as sentTime
-    PacketInfo(const PacketOpt* packet) 
-        : packet(packet), isAcked(false), sentTime(std::chrono::steady_clock::now()) {}
-
-    // Accessor for the packet
-    const PacketOpt& getPacket() const { return *packet; }
-
     // Mark the packet as acknowledged
     void setAcked() { isAcked = true; }
 
@@ -66,15 +52,17 @@ public:
     bool packetIsAcked() const { return isAcked; }
 
     // Update the sent time (e.g., for retransmission)
-    void updateSentTime() { sentTime = std::chrono::steady_clock::now(); }
+    void resetTimer() { sentTime = std::chrono::steady_clock::now(); }
 
     // Check if the packet has timed out (e.g., if more than 500 ms have passed)
     bool hasTimedOut() const;
 
     // getter for sent time
-    TimePoint getSentTime() { return sentTime; }
+    TimePoint getSentTime() const { return sentTime; }
+
 private:
-    const PacketOpt* packet;
+    PacketOptHeader header;
+    std::vector<char> data;
     bool isAcked;
     TimePoint sentTime;
 };

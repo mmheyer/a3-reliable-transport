@@ -112,10 +112,19 @@ void SenderOpt::sendData(const std::string& filename) {
         // if the packet type is 4, recv timed out and we need to retransmit all the packets
         if (ackPacket.getType() == 4) {
             // find seq nums for the packets that have timed out and retransmit them
-            std::vector<unsigned int> timedOutSeqNums = window->getTimedOutPacketSeqNums();
-            for (unsigned int seqNum : timedOutSeqNums) {
-                // retransmit the packet
-                sendPacket(*(window->getPacketWithSeqNum(seqNum)), false);
+            // std::vector<unsigned int> timedOutSeqNums = window->getTimedOutPacketSeqNums();
+            // for (unsigned int seqNum : timedOutSeqNums) {
+            //     // retransmit the packet
+            //     sendPacket(*(window->getPacketWithSeqNum(seqNum)), false);
+            // }
+
+            // for each packet in the window
+            for (PacketOpt& packet : window->getPackets()) {
+                // if the packet hasn't been ACKed and is timed out
+                if (!packet.packetIsAcked() && packet.hasTimedOut()) {
+                    // retransmit the packet
+                    sendPacket(packet, false);
+                }
             }
         }
         // if the checksum is valid and we received an ACK for a packet after expected packet in the window
@@ -207,16 +216,16 @@ void SenderOpt::createUDPSocket(int receiverPort, std::string& receiverIP) {
 
 // Updates the socket timeout based on the minimum remaining time of packets in the window
 void SenderOpt::updateSocketTimeout() {
-    if (window->getAllPacketInfo().empty()) {
+    if (!window->hasPackets()) {
         return; // No packets in the window, no need to update the timeout
     }
 
     auto currentTime = std::chrono::steady_clock::now();
     long minTimeout = 500; // Default timeout in milliseconds
 
-    for (const auto& packetInfo : window->getAllPacketInfo()) {
-        if (!packetInfo.packetIsAcked()) {
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - packetInfo.getSentTime()).count();
+    for (const auto& packet : window->getPackets()) {
+        if (!packet.packetIsAcked()) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - packet.getSentTime()).count();
             long remainingTime = 500 - elapsed;
             if (remainingTime > 0 && remainingTime < minTimeout) {
                 minTimeout = remainingTime;
@@ -236,7 +245,7 @@ void SenderOpt::updateSocketTimeout() {
     }
 }
 
-void SenderOpt::sendPacket(const PacketOpt& packet, bool isFirstSend) {
+void SenderOpt::sendPacket(PacketOpt& packet, bool isFirstSend) {
     // Prepare the packet data in a contiguous buffer
     PacketOptHeader networkHeader = packet.getNetworkOrderHeader();
     size_t totalSize = sizeof(PacketOptHeader) + packet.getLength();
@@ -268,7 +277,8 @@ void SenderOpt::sendPacket(const PacketOpt& packet, bool isFirstSend) {
     // otherwise, we are retransmitting
     else {
         // reset the timer for that packet
-        window->resetTimerForSeqNum(packet.getSeqNum());
+        // window->resetTimerForSeqNum(packet.getSeqNum());
+        packet.resetTimer();
     }
 }
 
