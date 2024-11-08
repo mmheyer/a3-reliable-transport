@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <cstdio> // For perror()
 #include <cerrno> // For errno and strerror()
+#include "Packet-base.hpp"
 #include "Logger-base.hpp"
 #include "crc32.h"
 
@@ -52,13 +53,6 @@ class Packet1 {
             std::cout << "  Checksum: " << ntohl(header.checkSum) << "\n";
             
         }
-    private:
-        struct PacketHeader {
-        unsigned int type;     // 0: START; 1: END; 2: DATA; 3: ACK
-        unsigned int seqNum;   // Sequence number
-        unsigned int length;   // Length of data; 0 for ACK packets
-        unsigned int checkSum; // 32-bit CRC checksum
-    };
 };
  
 class WReceiver { 
