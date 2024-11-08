@@ -8,6 +8,10 @@
 #include <stdexcept>
 #include <unordered_set>
 #include <random>
+#include <deque>
+#include <algorithm>
+#include <thread>
+#include <chrono>
 #include "crc32.h"
 
 #define PORT 8888
@@ -47,12 +51,14 @@ private:
     std::unordered_set<unsigned int> receivedSeqNums;
     std::mt19937 rng;
     std::uniform_real_distribution<double> distribution;
+    std::deque<PacketHeader> ackQueue;
 
     std::string generateFileName();
     void sendAck(unsigned int seqNum);
     void processPacket(const PacketHeader& header, const std::vector<char>& data);
     bool verifyChecksum(const PacketHeader& header, const std::vector<char>& data);
     bool shouldDropPacket();
+    void simulateAckReordering();
 };
 
 ReceiverOpt::ReceiverOpt() : rng(std::random_device{}()), distribution(0.0, 1.0) {
@@ -113,7 +119,8 @@ void ReceiverOpt::processPacket(const PacketHeader& header, const std::vector<ch
         expectedSeqNum = 0;
         receivedSeqNums.clear();
         std::cout << "Received START packet. Opening file for new connection." << std::endl;
-        sendAck(header.seqNum); // Send ACK with the received START seqNum
+        ackQueue.push_back(header); // Queue the ACK
+        simulateAckReordering();
         return;
     }
 
@@ -126,7 +133,8 @@ void ReceiverOpt::processPacket(const PacketHeader& header, const std::vector<ch
         expectedSeqNum = 0;
         fileCounter++;
         std::cout << "Received END packet. Closing file and resetting for new connection." << std::endl;
-        sendAck(header.seqNum); // Send ACK with the received END seqNum
+        ackQueue.push_back(header); // Queue the ACK
+        simulateAckReordering();
         return;
     }
 
@@ -160,8 +168,9 @@ void ReceiverOpt::processPacket(const PacketHeader& header, const std::vector<ch
             }
         }
 
-        // Send an ACK with the same seqNum as the received packet
-        sendAck(header.seqNum);
+        // Queue the ACK with the same seqNum as the received packet
+        ackQueue.push_back(header);
+        simulateAckReordering();
     }
 }
 
@@ -180,6 +189,33 @@ void ReceiverOpt::sendAck(unsigned int seqNum) {
         perror("sendto failed");
     } else {
         std::cout << "Sent ACK for seqNum = " << seqNum << std::endl;
+    }
+}
+
+void ReceiverOpt::simulateAckReordering() {
+    // Randomly decide to reorder ACKs with a probability of 20% (adjust as needed)
+    if (distribution(rng) < 0.2 && ackQueue.size() > 1) {
+        std::cout << "Reordering ACKs before sending." << std::endl;
+        std::shuffle(ackQueue.begin(), ackQueue.end(), rng);
+    }
+
+    // Simulate duplication of ACKs with a probability of 25% (adjust as needed)
+    if (distribution(rng) < 0.25 && !ackQueue.empty()) {
+        std::cout << "Duplicating ACKs before sending." << std::endl;
+        ackQueue.push_front(ackQueue.front()); // Duplicate the first ACK in the queue
+    }
+
+    // Simulate delay in the arrival of ACKs with a probability of 30% (adjust as needed)
+    if (distribution(rng) < 0.3) {
+        std::cout << "Delaying ACKs before sending." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Delay for 200 ms
+    }
+
+    // Send all ACKs in the queue
+    while (!ackQueue.empty()) {
+        PacketHeader ack = ackQueue.front();
+        ackQueue.pop_front();
+        sendAck(ack.seqNum);
     }
 }
 

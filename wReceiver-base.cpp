@@ -11,12 +11,9 @@
 #include "Logger-base.hpp"
 #include "crc32.h"
 
-using namespace std; 
-
-
 class Packet1 {
     public:
-		vector<char> data;
+		std::vector<char> data;
 	
     	PacketHeader header;
         Packet1(){
@@ -57,7 +54,7 @@ class Packet1 {
  
 class WReceiver { 
     public: 
-        WReceiver(int port, int window_size, string output_dir, string log_file);
+        WReceiver(int port, int window_size, std::string output_dir, std::string log_file);
         void startReceiving();
 
     private:
@@ -67,14 +64,14 @@ class WReceiver {
 
         int port; 
         int window_size; 
-        string output_dir;
-        string log_file;
+        std::string output_dir;
+        std::string log_file;
 
         bool validateChecksum(const char* data, int length, unsigned int receivedChecksum);
         void handlePacket(const PacketHeader& header, const char* data, int length);
 };
 
-WReceiver::WReceiver(int port, int window_size, string output_dir, string log_file):
+WReceiver::WReceiver(int port, int window_size, std::string output_dir, std::string log_file):
     port(port), window_size(window_size), output_dir(output_dir), log_file(log_file){
         //socket, bind, listen
         // initialize socket
@@ -82,10 +79,10 @@ WReceiver::WReceiver(int port, int window_size, string output_dir, string log_fi
 
         sockfd = socket(AF_INET, SOCK_DGRAM, 0);
         if(sockfd < 0){
-            cout << "Socket Creation Error" << endl;
+            std::cout << "Socket Creation Error" << std::endl;
             exit(1);
         }
-        cout << "Socket created" << endl;
+        std::cout << "Socket created" << std::endl;
 
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET; 
@@ -102,51 +99,51 @@ WReceiver::WReceiver(int port, int window_size, string output_dir, string log_fi
 }
 
 void writeToFile(const std::vector<char>& data, int index){
-    string filename = "FILE-" + std::to_string(index) + ".out";
-    ofstream outfile(filename, std::ios::binary | std::ios::app);
+    std::string filename = "FILE-" + std::to_string(index) + ".out";
+    std::ofstream outfile(filename, std::ios::binary | std::ios::app);
     if(!outfile){
-        cout << "Failed to open file\n";
+        std::cout << "Failed to open file\n";
         return;
     }
     outfile.write(data.data(), static_cast<long>(data.size()));
     outfile.close();
-    cout << "[DEBUG] data written to " << filename << endl;
+    std::cout << "[DEBUG] data written to " << filename << std::endl;
 }
 
 void WReceiver::startReceiving(){
     bool connection = false; 
     int next_seq = 0; 
     int counter = -1; 
-    ofstream output_file;
+    std::ofstream output_file;
     int startACK = 0; 
     Packet1 ackPacket;
     Logger logOutput(log_file);
 
-    cout << "[Debug] Start receiving" << endl;
-    map<int, Packet1> receivedPackets; //seq num, packet info
+    std::cout << "[Debug] Start receiving" << std::endl;
+    std::map<int, Packet1> receivedPackets; //seq num, packet info
     while(true){
         char buffer[1500]; //8 byte udp header, 20 byte tcp header, 1472 data
         
         ssize_t recv_len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&client, &caddr_len);
         if (recv_len < 0) {
-            cout << "ERROR: Recv error" << endl;
+            std::cout << "ERROR: Recv error" << std::endl;
             continue;
         }
 
         Packet1 p(buffer, recv_len); //received packet
         logOutput.logPacket(p.header);
         p.print(); 
-        cout << "[Debug] initialized packet" << endl;
+        std::cout << "[Debug] initialized packet" << std::endl;
 
         //check checksum 
         char ACK[1500];
 
         //only handles packet if checksum is right, does nothing if it was wrong
         if(p.header.type == 0){ //START
-            cout << "[Start Debug] START received" << endl;
+            std::cout << "[Start Debug] START received" << std::endl;
             //start stuff
             if(connection){ //drops packet
-                cout << "Packet dropped due to existing connection/transfer" << endl;
+                std::cout << "Packet dropped due to existing connection/transfer" << std::endl;
                 continue;
             } else{
                 connection = true; 
@@ -174,7 +171,7 @@ void WReceiver::startReceiving(){
                 
             }
         } else if(p.header.type == 1){ //END
-            cout << "[End Debug] END received" << endl;
+            std::cout << "[End Debug] END received" << std::endl;
             //end
             connection = false;
             //ACK
@@ -186,7 +183,7 @@ void WReceiver::startReceiving(){
             logOutput.logPacket(ackPacket.header);
             ssize_t bytes_sent =  sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
             if (bytes_sent < 0) {
-                cout << "ERROR: Failed to send packet" << endl;
+                std::cout << "ERROR: Failed to send packet" << std::endl;
             } else {
                 std::cout << "END ACK sent successfully\n";
             }
@@ -194,7 +191,7 @@ void WReceiver::startReceiving(){
             output_file.close();
             //TODO: END
         } else if(p.header.type == 2){ //DATA
-            cout << "[Data Debug] DATA Received" << endl;
+            std::cout << "[Data Debug] DATA Received" << std::endl;
 
              for (ssize_t i = 0; i < recv_len; ++i) {
                 if (std::isprint(buffer[i])) {
@@ -207,17 +204,17 @@ void WReceiver::startReceiving(){
 
             int c = static_cast<int>(p.header.checkSum); 
             int calculated_c = static_cast<int>(crc32(p.data.data(), p.data.size()));
-            cout << c << "*" << calculated_c << endl; 
+            std::cout << c << "*" << calculated_c << std::endl; 
             if(c == calculated_c){
             //only do stuff if valid crc
             if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
                 //if packet has correct crc and is in window size-> add to map
                 receivedPackets[static_cast<int>(p.header.seqNum)] = p;
-                cout << "NEXT SEQ " << next_seq << endl;
-                cout << "HEADEr SWQ " << ntohl(p.header.seqNum) << endl;
+                std::cout << "NEXT SEQ " << next_seq << std::endl;
+                std::cout << "HEADEr SWQ " << ntohl(p.header.seqNum) << std::endl;
                 if(int(p.header.seqNum) == next_seq){
-                    cout << endl;
-                    cout << "RIGHT SEQ NUM RECEIVED" << endl;
+                    std::cout << std::endl;
+                    std::cout << "RIGHT SEQ NUM RECEIVED" << std::endl;
                     while(receivedPackets.find(next_seq) != receivedPackets.end()){
                         //iterates through map
                         Packet1 order = receivedPackets[next_seq];
@@ -236,13 +233,13 @@ void WReceiver::startReceiving(){
                 logOutput.logPacket(ackPacket.header);
                 ssize_t bytes_sent =  sendto(sockfd, ACK, sizeof(ACK), 0, reinterpret_cast<sockaddr*>(&client), caddr_len);
                 if (bytes_sent < 0) {
-                    cout << "Failed to send packet" << endl;
+                    std::cout << "Failed to send packet" << std::endl;
                 } else {
                     std::cout << "DATA ACK sent successfully\n";
                 }
                 
             } else{
-                cout << "packet drop" << endl;
+                std::cout << "packet drop" << std::endl;
             }
 
             
@@ -261,8 +258,8 @@ int main(int argc, char* argv[]){
     }
     int port = atoi(argv[1]);
     int window_size = atoi(argv[2]);
-    string output_dir = argv[3];
-    string log_file = argv[4];
+    std::string output_dir = argv[3];
+    std::string log_file = argv[4];
 
     WReceiver w(port, window_size, output_dir, log_file);
     w.startReceiving();
