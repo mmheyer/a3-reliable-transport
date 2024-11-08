@@ -6,7 +6,8 @@
 #include <stdexcept>
 
 // Constructor for creating packets to send
-PacketOpt::PacketOpt(unsigned int type, const std::vector<char>& data, unsigned int seqNum) : data(data) {
+PacketOpt::PacketOpt(unsigned int type, const std::vector<char>& data, unsigned int seqNum) 
+    : data(data), isAcked(false), sentTime(std::chrono::steady_clock::now()) {
     header.type = type;
     header.seqNum = seqNum;
     header.length = static_cast<unsigned int>(data.size());
@@ -14,7 +15,8 @@ PacketOpt::PacketOpt(unsigned int type, const std::vector<char>& data, unsigned 
 }
 
 // Constructor for creating packets from received buffer
-PacketOpt::PacketOpt(const char* buffer, size_t bufferSize) {
+PacketOpt::PacketOpt(const char* buffer, size_t bufferSize) 
+    : isAcked(false), sentTime(std::chrono::steady_clock::now()) {
     if (bufferSize < sizeof(PacketOptHeader)) {
         throw std::runtime_error("Buffer size is too small to contain a valid PacketOptHeader");
     }

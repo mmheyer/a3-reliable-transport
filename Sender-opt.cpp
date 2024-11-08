@@ -266,6 +266,9 @@ void SenderOpt::sendPacket(PacketOpt& packet, bool isFirstSend) {
         std::cout << "Bytes sent: " << bytesSent << std::endl;
     }
 
+    // update sent time
+    packet.resetTimer();
+
     // Log the packet transmission
     logger->logPacket(packet.getHeader());
 
