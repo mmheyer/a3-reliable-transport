@@ -114,8 +114,6 @@ If the next expected `seqNum` is `N`, `wReceiver` will drop all packets with `se
 
 `wReceiver` should also log every single packet it sends and receives using the same format as the `wSender` log. Again, do not log malformed packets that are received and consequently dropped.
 
-Put the programs written in parts 1 and 2 of this assignment into a folder called `WTP-base`.
-
 ### Running `wReceiver`
 `wReceiver` should be invoked as follows:
 
