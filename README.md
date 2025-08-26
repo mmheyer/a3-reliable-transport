@@ -4,7 +4,7 @@ latex: true
 ---
 # Assignment 3: Reliable Transport
 
-### Due: March 31, 2025 at 11:59 PM
+### Due: November 8, 2025 at 11:59 PM
 
 ## Table of contents
 * [Overview](#overview)
