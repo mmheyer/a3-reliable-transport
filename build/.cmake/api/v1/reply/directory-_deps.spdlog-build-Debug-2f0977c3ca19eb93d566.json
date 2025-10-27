@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "_deps/spdlog-build",
+		"source" : "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src"
+	}
+}

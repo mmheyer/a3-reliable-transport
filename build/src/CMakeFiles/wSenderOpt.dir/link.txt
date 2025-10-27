@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/wSenderOpt.dir/opt/Packet.cpp.o CMakeFiles/wSenderOpt.dir/opt/Window.cpp.o CMakeFiles/wSenderOpt.dir/opt/Sender.cpp.o -o ../bin/wSenderOpt
