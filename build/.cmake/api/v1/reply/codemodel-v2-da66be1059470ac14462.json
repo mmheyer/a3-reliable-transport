@@ -63,6 +63,12 @@
 				},
 				{
 					"build" : "src",
+					"childIndexes" : 
+					[
+						5,
+						6,
+						7
+					],
 					"jsonFile" : "directory-src-Debug-b6cf2213fc5053b67c22.json",
 					"minimumCMakeVersion" : 
 					{
@@ -70,12 +76,48 @@
 					},
 					"parentIndex" : 0,
 					"projectIndex" : 0,
-					"source" : "src",
+					"source" : "src"
+				},
+				{
+					"build" : "src/base",
+					"jsonFile" : "directory-src.base-Debug-85461d0ec0c55311a4f7.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.28"
+					},
+					"parentIndex" : 4,
+					"projectIndex" : 0,
+					"source" : "src/base",
 					"targetIndexes" : 
 					[
 						1,
+						3
+					]
+				},
+				{
+					"build" : "src/common",
+					"jsonFile" : "directory-src.common-Debug-26ca1aee19599f655637.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.28"
+					},
+					"parentIndex" : 4,
+					"projectIndex" : 0,
+					"source" : "src/common"
+				},
+				{
+					"build" : "src/opt",
+					"jsonFile" : "directory-src.opt-Debug-55bdf1ee22e88885375b.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.28"
+					},
+					"parentIndex" : 4,
+					"projectIndex" : 0,
+					"source" : "src/opt",
+					"targetIndexes" : 
+					[
 						2,
-						3,
 						4
 					]
 				}
@@ -92,7 +134,10 @@
 					"directoryIndexes" : 
 					[
 						0,
-						4
+						4,
+						5,
+						6,
+						7
 					],
 					"name" : "eecs489-project3-wn25",
 					"targetIndexes" : 
@@ -135,30 +180,30 @@
 					"projectIndex" : 1
 				},
 				{
-					"directoryIndex" : 4,
-					"id" : "wReceiver::@145eef247bfb46b6828c",
-					"jsonFile" : "target-wReceiver-Debug-0711b108fea459a2cced.json",
+					"directoryIndex" : 5,
+					"id" : "wReceiver::@da17c8cd1000ca7e4b79",
+					"jsonFile" : "target-wReceiver-Debug-a96a3888464e7a54fb0f.json",
 					"name" : "wReceiver",
 					"projectIndex" : 0
 				},
 				{
-					"directoryIndex" : 4,
-					"id" : "wReceiverOpt::@145eef247bfb46b6828c",
-					"jsonFile" : "target-wReceiverOpt-Debug-c26a1b566052db842dee.json",
+					"directoryIndex" : 7,
+					"id" : "wReceiverOpt::@b42b5f10b4b5080c2a04",
+					"jsonFile" : "target-wReceiverOpt-Debug-a14d5e4474c6905da16d.json",
 					"name" : "wReceiverOpt",
 					"projectIndex" : 0
 				},
 				{
-					"directoryIndex" : 4,
-					"id" : "wSender::@145eef247bfb46b6828c",
-					"jsonFile" : "target-wSender-Debug-b35d2292b50fa18de801.json",
+					"directoryIndex" : 5,
+					"id" : "wSender::@da17c8cd1000ca7e4b79",
+					"jsonFile" : "target-wSender-Debug-647a7fe201c2e5ed62ae.json",
 					"name" : "wSender",
 					"projectIndex" : 0
 				},
 				{
-					"directoryIndex" : 4,
-					"id" : "wSenderOpt::@145eef247bfb46b6828c",
-					"jsonFile" : "target-wSenderOpt-Debug-2da0dab4b0f3fae9aabe.json",
+					"directoryIndex" : 7,
+					"id" : "wSenderOpt::@b42b5f10b4b5080c2a04",
+					"jsonFile" : "target-wSenderOpt-Debug-6071d67f7d10a4abba1a.json",
 					"name" : "wSenderOpt",
 					"projectIndex" : 0
 				}

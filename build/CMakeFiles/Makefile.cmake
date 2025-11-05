@@ -18,6 +18,9 @@ set(CMAKE_MAKEFILE_DEPENDS
   "_deps/spdlog-src/cmake/utils.cmake"
   "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/CMakeLists.txt"
   "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/CMakeLists.txt"
+  "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/CMakeLists.txt"
+  "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/common/CMakeLists.txt"
+  "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/CMakeLists.txt"
   "/Users/mmheyer/anaconda3/lib/cmake/Boost-1.82.0/BoostConfig.cmake"
   "/Users/mmheyer/anaconda3/lib/cmake/Boost-1.82.0/BoostConfigVersion.cmake"
   "/Users/mmheyer/anaconda3/lib/cmake/BoostDetectToolset-1.82.0.cmake"
@@ -89,13 +92,16 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "_deps/cxxopts-build/CMakeFiles/CMakeDirectoryInformation.cmake"
   "_deps/cxxopts-build/include/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "src/base/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "src/common/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "src/opt/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "_deps/spdlog-build/CMakeFiles/spdlog.dir/DependInfo.cmake"
-  "src/CMakeFiles/wSender.dir/DependInfo.cmake"
-  "src/CMakeFiles/wReceiver.dir/DependInfo.cmake"
-  "src/CMakeFiles/wSenderOpt.dir/DependInfo.cmake"
-  "src/CMakeFiles/wReceiverOpt.dir/DependInfo.cmake"
+  "src/base/CMakeFiles/wSender.dir/DependInfo.cmake"
+  "src/base/CMakeFiles/wReceiver.dir/DependInfo.cmake"
+  "src/opt/CMakeFiles/wSenderOpt.dir/DependInfo.cmake"
+  "src/opt/CMakeFiles/wReceiverOpt.dir/DependInfo.cmake"
   )

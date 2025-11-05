@@ -10,24 +10,6 @@
 #   wSenderOpt
 #   wReceiverOpt
 
-add_executable(wSender
-    base/Packet.cpp
-    base/Window.cpp
-    base/Sender.cpp
-)
-
-add_executable(wReceiver
-    base/Window.cpp
-    base/Receiver.cpp
-)
-
-add_executable(wSenderOpt
-    opt/Packet.cpp
-    opt/Window.cpp
-    opt/Sender.cpp
-)
-
-add_executable(wReceiverOpt
-    opt/Window.cpp
-    opt/Receiver.cpp
-)
+add_subdirectory(base)
+add_subdirectory(common)
+add_subdirectory(opt)

@@ -147,29 +147,91 @@ _deps/spdlog-build/clean: _deps/spdlog-build/CMakeFiles/spdlog.dir/clean
 # Directory level rules for directory src
 
 # Recursive "all" directory target.
-src/all: src/CMakeFiles/wSender.dir/all
-src/all: src/CMakeFiles/wReceiver.dir/all
-src/all: src/CMakeFiles/wSenderOpt.dir/all
-src/all: src/CMakeFiles/wReceiverOpt.dir/all
+src/all: src/base/all
+src/all: src/common/all
+src/all: src/opt/all
 .PHONY : src/all
 
 # Recursive "codegen" directory target.
-src/codegen: src/CMakeFiles/wSender.dir/codegen
-src/codegen: src/CMakeFiles/wReceiver.dir/codegen
-src/codegen: src/CMakeFiles/wSenderOpt.dir/codegen
-src/codegen: src/CMakeFiles/wReceiverOpt.dir/codegen
+src/codegen: src/base/codegen
+src/codegen: src/common/codegen
+src/codegen: src/opt/codegen
 .PHONY : src/codegen
 
 # Recursive "preinstall" directory target.
-src/preinstall:
+src/preinstall: src/base/preinstall
+src/preinstall: src/common/preinstall
+src/preinstall: src/opt/preinstall
 .PHONY : src/preinstall
 
 # Recursive "clean" directory target.
-src/clean: src/CMakeFiles/wSender.dir/clean
-src/clean: src/CMakeFiles/wReceiver.dir/clean
-src/clean: src/CMakeFiles/wSenderOpt.dir/clean
-src/clean: src/CMakeFiles/wReceiverOpt.dir/clean
+src/clean: src/base/clean
+src/clean: src/common/clean
+src/clean: src/opt/clean
 .PHONY : src/clean
+
+#=============================================================================
+# Directory level rules for directory src/base
+
+# Recursive "all" directory target.
+src/base/all: src/base/CMakeFiles/wSender.dir/all
+src/base/all: src/base/CMakeFiles/wReceiver.dir/all
+.PHONY : src/base/all
+
+# Recursive "codegen" directory target.
+src/base/codegen: src/base/CMakeFiles/wSender.dir/codegen
+src/base/codegen: src/base/CMakeFiles/wReceiver.dir/codegen
+.PHONY : src/base/codegen
+
+# Recursive "preinstall" directory target.
+src/base/preinstall:
+.PHONY : src/base/preinstall
+
+# Recursive "clean" directory target.
+src/base/clean: src/base/CMakeFiles/wSender.dir/clean
+src/base/clean: src/base/CMakeFiles/wReceiver.dir/clean
+.PHONY : src/base/clean
+
+#=============================================================================
+# Directory level rules for directory src/common
+
+# Recursive "all" directory target.
+src/common/all:
+.PHONY : src/common/all
+
+# Recursive "codegen" directory target.
+src/common/codegen:
+.PHONY : src/common/codegen
+
+# Recursive "preinstall" directory target.
+src/common/preinstall:
+.PHONY : src/common/preinstall
+
+# Recursive "clean" directory target.
+src/common/clean:
+.PHONY : src/common/clean
+
+#=============================================================================
+# Directory level rules for directory src/opt
+
+# Recursive "all" directory target.
+src/opt/all: src/opt/CMakeFiles/wSenderOpt.dir/all
+src/opt/all: src/opt/CMakeFiles/wReceiverOpt.dir/all
+.PHONY : src/opt/all
+
+# Recursive "codegen" directory target.
+src/opt/codegen: src/opt/CMakeFiles/wSenderOpt.dir/codegen
+src/opt/codegen: src/opt/CMakeFiles/wReceiverOpt.dir/codegen
+.PHONY : src/opt/codegen
+
+# Recursive "preinstall" directory target.
+src/opt/preinstall:
+.PHONY : src/opt/preinstall
+
+# Recursive "clean" directory target.
+src/opt/clean: src/opt/CMakeFiles/wSenderOpt.dir/clean
+src/opt/clean: src/opt/CMakeFiles/wReceiverOpt.dir/clean
+.PHONY : src/opt/clean
 
 #=============================================================================
 # Target rules for target _deps/spdlog-build/CMakeFiles/spdlog.dir
@@ -204,132 +266,132 @@ _deps/spdlog-build/CMakeFiles/spdlog.dir/clean:
 .PHONY : _deps/spdlog-build/CMakeFiles/spdlog.dir/clean
 
 #=============================================================================
-# Target rules for target src/CMakeFiles/wSender.dir
+# Target rules for target src/base/CMakeFiles/wSender.dir
 
 # All Build rule for target.
-src/CMakeFiles/wSender.dir/all:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSender.dir/build.make src/CMakeFiles/wSender.dir/depend
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSender.dir/build.make src/CMakeFiles/wSender.dir/build
+src/base/CMakeFiles/wSender.dir/all: _deps/spdlog-build/CMakeFiles/spdlog.dir/all
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wSender.dir/build.make src/base/CMakeFiles/wSender.dir/depend
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wSender.dir/build.make src/base/CMakeFiles/wSender.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=15,16,17,18 "Built target wSender"
-.PHONY : src/CMakeFiles/wSender.dir/all
+.PHONY : src/base/CMakeFiles/wSender.dir/all
 
 # Build rule for subdir invocation for target.
-src/CMakeFiles/wSender.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 4
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/wSender.dir/all
+src/base/CMakeFiles/wSender.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 12
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/base/CMakeFiles/wSender.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 0
-.PHONY : src/CMakeFiles/wSender.dir/rule
+.PHONY : src/base/CMakeFiles/wSender.dir/rule
 
 # Convenience name for target.
-wSender: src/CMakeFiles/wSender.dir/rule
+wSender: src/base/CMakeFiles/wSender.dir/rule
 .PHONY : wSender
 
 # codegen rule for target.
-src/CMakeFiles/wSender.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSender.dir/build.make src/CMakeFiles/wSender.dir/codegen
+src/base/CMakeFiles/wSender.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wSender.dir/build.make src/base/CMakeFiles/wSender.dir/codegen
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=15,16,17,18 "Finished codegen for target wSender"
-.PHONY : src/CMakeFiles/wSender.dir/codegen
+.PHONY : src/base/CMakeFiles/wSender.dir/codegen
 
 # clean rule for target.
-src/CMakeFiles/wSender.dir/clean:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSender.dir/build.make src/CMakeFiles/wSender.dir/clean
-.PHONY : src/CMakeFiles/wSender.dir/clean
+src/base/CMakeFiles/wSender.dir/clean:
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wSender.dir/build.make src/base/CMakeFiles/wSender.dir/clean
+.PHONY : src/base/CMakeFiles/wSender.dir/clean
 
 #=============================================================================
-# Target rules for target src/CMakeFiles/wReceiver.dir
+# Target rules for target src/base/CMakeFiles/wReceiver.dir
 
 # All Build rule for target.
-src/CMakeFiles/wReceiver.dir/all:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiver.dir/build.make src/CMakeFiles/wReceiver.dir/depend
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiver.dir/build.make src/CMakeFiles/wReceiver.dir/build
+src/base/CMakeFiles/wReceiver.dir/all: _deps/spdlog-build/CMakeFiles/spdlog.dir/all
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wReceiver.dir/build.make src/base/CMakeFiles/wReceiver.dir/depend
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wReceiver.dir/build.make src/base/CMakeFiles/wReceiver.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=9,10,11 "Built target wReceiver"
-.PHONY : src/CMakeFiles/wReceiver.dir/all
+.PHONY : src/base/CMakeFiles/wReceiver.dir/all
 
 # Build rule for subdir invocation for target.
-src/CMakeFiles/wReceiver.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 3
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/wReceiver.dir/all
+src/base/CMakeFiles/wReceiver.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 11
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/base/CMakeFiles/wReceiver.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 0
-.PHONY : src/CMakeFiles/wReceiver.dir/rule
+.PHONY : src/base/CMakeFiles/wReceiver.dir/rule
 
 # Convenience name for target.
-wReceiver: src/CMakeFiles/wReceiver.dir/rule
+wReceiver: src/base/CMakeFiles/wReceiver.dir/rule
 .PHONY : wReceiver
 
 # codegen rule for target.
-src/CMakeFiles/wReceiver.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiver.dir/build.make src/CMakeFiles/wReceiver.dir/codegen
+src/base/CMakeFiles/wReceiver.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wReceiver.dir/build.make src/base/CMakeFiles/wReceiver.dir/codegen
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=9,10,11 "Finished codegen for target wReceiver"
-.PHONY : src/CMakeFiles/wReceiver.dir/codegen
+.PHONY : src/base/CMakeFiles/wReceiver.dir/codegen
 
 # clean rule for target.
-src/CMakeFiles/wReceiver.dir/clean:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiver.dir/build.make src/CMakeFiles/wReceiver.dir/clean
-.PHONY : src/CMakeFiles/wReceiver.dir/clean
+src/base/CMakeFiles/wReceiver.dir/clean:
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wReceiver.dir/build.make src/base/CMakeFiles/wReceiver.dir/clean
+.PHONY : src/base/CMakeFiles/wReceiver.dir/clean
 
 #=============================================================================
-# Target rules for target src/CMakeFiles/wSenderOpt.dir
+# Target rules for target src/opt/CMakeFiles/wSenderOpt.dir
 
 # All Build rule for target.
-src/CMakeFiles/wSenderOpt.dir/all:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSenderOpt.dir/build.make src/CMakeFiles/wSenderOpt.dir/depend
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSenderOpt.dir/build.make src/CMakeFiles/wSenderOpt.dir/build
+src/opt/CMakeFiles/wSenderOpt.dir/all: _deps/spdlog-build/CMakeFiles/spdlog.dir/all
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wSenderOpt.dir/build.make src/opt/CMakeFiles/wSenderOpt.dir/depend
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wSenderOpt.dir/build.make src/opt/CMakeFiles/wSenderOpt.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=19,20,21,22 "Built target wSenderOpt"
-.PHONY : src/CMakeFiles/wSenderOpt.dir/all
+.PHONY : src/opt/CMakeFiles/wSenderOpt.dir/all
 
 # Build rule for subdir invocation for target.
-src/CMakeFiles/wSenderOpt.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 4
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/wSenderOpt.dir/all
+src/opt/CMakeFiles/wSenderOpt.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 12
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/opt/CMakeFiles/wSenderOpt.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 0
-.PHONY : src/CMakeFiles/wSenderOpt.dir/rule
+.PHONY : src/opt/CMakeFiles/wSenderOpt.dir/rule
 
 # Convenience name for target.
-wSenderOpt: src/CMakeFiles/wSenderOpt.dir/rule
+wSenderOpt: src/opt/CMakeFiles/wSenderOpt.dir/rule
 .PHONY : wSenderOpt
 
 # codegen rule for target.
-src/CMakeFiles/wSenderOpt.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSenderOpt.dir/build.make src/CMakeFiles/wSenderOpt.dir/codegen
+src/opt/CMakeFiles/wSenderOpt.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wSenderOpt.dir/build.make src/opt/CMakeFiles/wSenderOpt.dir/codegen
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=19,20,21,22 "Finished codegen for target wSenderOpt"
-.PHONY : src/CMakeFiles/wSenderOpt.dir/codegen
+.PHONY : src/opt/CMakeFiles/wSenderOpt.dir/codegen
 
 # clean rule for target.
-src/CMakeFiles/wSenderOpt.dir/clean:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSenderOpt.dir/build.make src/CMakeFiles/wSenderOpt.dir/clean
-.PHONY : src/CMakeFiles/wSenderOpt.dir/clean
+src/opt/CMakeFiles/wSenderOpt.dir/clean:
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wSenderOpt.dir/build.make src/opt/CMakeFiles/wSenderOpt.dir/clean
+.PHONY : src/opt/CMakeFiles/wSenderOpt.dir/clean
 
 #=============================================================================
-# Target rules for target src/CMakeFiles/wReceiverOpt.dir
+# Target rules for target src/opt/CMakeFiles/wReceiverOpt.dir
 
 # All Build rule for target.
-src/CMakeFiles/wReceiverOpt.dir/all:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiverOpt.dir/build.make src/CMakeFiles/wReceiverOpt.dir/depend
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiverOpt.dir/build.make src/CMakeFiles/wReceiverOpt.dir/build
+src/opt/CMakeFiles/wReceiverOpt.dir/all: _deps/spdlog-build/CMakeFiles/spdlog.dir/all
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wReceiverOpt.dir/build.make src/opt/CMakeFiles/wReceiverOpt.dir/depend
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wReceiverOpt.dir/build.make src/opt/CMakeFiles/wReceiverOpt.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=12,13,14 "Built target wReceiverOpt"
-.PHONY : src/CMakeFiles/wReceiverOpt.dir/all
+.PHONY : src/opt/CMakeFiles/wReceiverOpt.dir/all
 
 # Build rule for subdir invocation for target.
-src/CMakeFiles/wReceiverOpt.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 3
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/wReceiverOpt.dir/all
+src/opt/CMakeFiles/wReceiverOpt.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 11
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/opt/CMakeFiles/wReceiverOpt.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles 0
-.PHONY : src/CMakeFiles/wReceiverOpt.dir/rule
+.PHONY : src/opt/CMakeFiles/wReceiverOpt.dir/rule
 
 # Convenience name for target.
-wReceiverOpt: src/CMakeFiles/wReceiverOpt.dir/rule
+wReceiverOpt: src/opt/CMakeFiles/wReceiverOpt.dir/rule
 .PHONY : wReceiverOpt
 
 # codegen rule for target.
-src/CMakeFiles/wReceiverOpt.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiverOpt.dir/build.make src/CMakeFiles/wReceiverOpt.dir/codegen
+src/opt/CMakeFiles/wReceiverOpt.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wReceiverOpt.dir/build.make src/opt/CMakeFiles/wReceiverOpt.dir/codegen
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/mmheyer/School/EECS489/a3-reliable-transport/build/CMakeFiles --progress-num=12,13,14 "Finished codegen for target wReceiverOpt"
-.PHONY : src/CMakeFiles/wReceiverOpt.dir/codegen
+.PHONY : src/opt/CMakeFiles/wReceiverOpt.dir/codegen
 
 # clean rule for target.
-src/CMakeFiles/wReceiverOpt.dir/clean:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiverOpt.dir/build.make src/CMakeFiles/wReceiverOpt.dir/clean
-.PHONY : src/CMakeFiles/wReceiverOpt.dir/clean
+src/opt/CMakeFiles/wReceiverOpt.dir/clean:
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wReceiverOpt.dir/build.make src/opt/CMakeFiles/wReceiverOpt.dir/clean
+.PHONY : src/opt/CMakeFiles/wReceiverOpt.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

@@ -978,6 +978,7 @@ src/CMakeFiles/wReceiver.dir/base/Receiver.cpp.o
  /Library/Developer/CommandLineTools/usr/lib/clang/17/include/stddef.h
  /Library/Developer/CommandLineTools/usr/lib/clang/17/include/stdint.h
  /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/common/Crc32.hpp
+ /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/common/PacketHeader.hpp
  /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Packet.hpp
 
 src/CMakeFiles/wReceiver.dir/base/Window.cpp.o
@@ -1881,6 +1882,7 @@ src/CMakeFiles/wReceiver.dir/base/Window.cpp.o
  /Library/Developer/CommandLineTools/usr/lib/clang/17/include/stdarg.h
  /Library/Developer/CommandLineTools/usr/lib/clang/17/include/stddef.h
  /Library/Developer/CommandLineTools/usr/lib/clang/17/include/stdint.h
+ /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/common/PacketHeader.hpp
  /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Packet.hpp
  /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Window.hpp
 

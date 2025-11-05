@@ -5,7 +5,10 @@
 		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-build/cmake_install.cmake",
 		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-build/cmake_install.cmake",
 		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-build/include/cmake_install.cmake",
-		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/cmake_install.cmake"
+		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/cmake_install.cmake",
+		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/base/cmake_install.cmake",
+		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/common/cmake_install.cmake",
+		"/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/opt/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

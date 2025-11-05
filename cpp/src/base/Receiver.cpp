@@ -203,9 +203,9 @@ void Receiver::startReceiving(){
             int c = static_cast<int>(p.header.checksum); 
             int calculated_c = static_cast<int>(crc32(p.data.data(), p.data.size()));
             std::cout << c << "*" << calculated_c << std::endl; 
-            if(c == calculated_c){
+            if (c == calculated_c){
             //only do stuff if valid crc
-            if(next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
+            if (next_seq + window_size > int(p.header.seqNum) && next_seq <= int(p.header.seqNum)){  //only handles things in windowsize
                 //if packet has correct crc and is in window size-> add to map
                 receivedPackets[static_cast<int>(p.header.seqNum)] = p;
                 std::cout << "NEXT SEQ " << next_seq << std::endl;

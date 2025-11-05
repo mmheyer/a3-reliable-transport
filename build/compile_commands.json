@@ -42,63 +42,63 @@
   "output": "_deps/spdlog-build/CMakeFiles/spdlog.dir/src/bundled_fmtlib_format.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSender.dir/base/Packet.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Packet.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/base",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSender.dir/Packet.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Packet.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Packet.cpp",
-  "output": "src/CMakeFiles/wSender.dir/base/Packet.cpp.o"
+  "output": "src/base/CMakeFiles/wSender.dir/Packet.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSender.dir/base/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Window.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/base",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSender.dir/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Window.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Window.cpp",
-  "output": "src/CMakeFiles/wSender.dir/base/Window.cpp.o"
+  "output": "src/base/CMakeFiles/wSender.dir/Window.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSender.dir/base/Sender.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Sender.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/base",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSender.dir/Sender.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Sender.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Sender.cpp",
-  "output": "src/CMakeFiles/wSender.dir/base/Sender.cpp.o"
+  "output": "src/base/CMakeFiles/wSender.dir/Sender.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiver.dir/base/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Window.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/base",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiver.dir/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Window.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Window.cpp",
-  "output": "src/CMakeFiles/wReceiver.dir/base/Window.cpp.o"
+  "output": "src/base/CMakeFiles/wReceiver.dir/Window.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiver.dir/base/Receiver.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Receiver.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/base",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiver.dir/Receiver.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Receiver.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/base/Receiver.cpp",
-  "output": "src/CMakeFiles/wReceiver.dir/base/Receiver.cpp.o"
+  "output": "src/base/CMakeFiles/wReceiver.dir/Receiver.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSenderOpt.dir/opt/Packet.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Packet.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/opt",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSenderOpt.dir/Packet.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Packet.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Packet.cpp",
-  "output": "src/CMakeFiles/wSenderOpt.dir/opt/Packet.cpp.o"
+  "output": "src/opt/CMakeFiles/wSenderOpt.dir/Packet.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSenderOpt.dir/opt/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Window.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/opt",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSenderOpt.dir/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Window.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Window.cpp",
-  "output": "src/CMakeFiles/wSenderOpt.dir/opt/Window.cpp.o"
+  "output": "src/opt/CMakeFiles/wSenderOpt.dir/Window.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSenderOpt.dir/opt/Sender.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Sender.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/opt",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wSenderOpt.dir/Sender.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Sender.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Sender.cpp",
-  "output": "src/CMakeFiles/wSenderOpt.dir/opt/Sender.cpp.o"
+  "output": "src/opt/CMakeFiles/wSenderOpt.dir/Sender.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiverOpt.dir/opt/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Window.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/opt",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiverOpt.dir/Window.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Window.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Window.cpp",
-  "output": "src/CMakeFiles/wReceiverOpt.dir/opt/Window.cpp.o"
+  "output": "src/opt/CMakeFiles/wReceiverOpt.dir/Window.cpp.o"
 },
 {
-  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiverOpt.dir/opt/Receiver.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Receiver.cpp",
+  "directory": "/Users/mmheyer/School/EECS489/a3-reliable-transport/build/src/opt",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/spdlog-src/include -I/Users/mmheyer/School/EECS489/a3-reliable-transport/build/_deps/cxxopts-src/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/wReceiverOpt.dir/Receiver.cpp.o -c /Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Receiver.cpp",
   "file": "/Users/mmheyer/School/EECS489/a3-reliable-transport/cpp/src/opt/Receiver.cpp",
-  "output": "src/CMakeFiles/wReceiverOpt.dir/opt/Receiver.cpp.o"
+  "output": "src/opt/CMakeFiles/wReceiverOpt.dir/Receiver.cpp.o"
 }
 ]

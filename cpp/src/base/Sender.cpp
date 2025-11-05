@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <chrono>
 #include <random>
+#include "cxxopts.hpp"
+#include <spdlog/spdlog.h>
 #include "Sender.hpp"
 #include "Window.hpp"
 #include "Packet.hpp"
@@ -18,16 +20,13 @@ const int PORT = 9000; // Port to listen on, adjust as necessary
 const size_t CHUNK_SIZE = 1456;
 
 // constructor
-Sender::Sender(std::string& receiverIP, int receiverPort, int windowSize, std::string& logFile)
+Sender::Sender(std::string& hostname, int port, int window_size)
     : sockfd(0), randSeqNum(0) {
     // setup UDP socket
-    createUDPSocket(receiverPort, receiverIP);
-    
-    // create logger
-    // logger = new Logger(logFile);
+    createUDPSocket(port, hostname);
 
     // create window
-    window = new Window(windowSize);
+    window = new Window(window_size);
 }
 
 // destructor
@@ -136,7 +135,7 @@ void Sender::endConnection() {
 }
 
 // create a UDP socket and bind the socket to the port
-void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
+void Sender::createUDPSocket(int port, std::string& hostname) {
     struct sockaddr_in si_me;
 
     // Create a UDP socket
@@ -166,10 +165,10 @@ void Sender::createUDPSocket(int receiverPort, std::string& receiverIP) {
 
     // Set up receiver address
     receiverAddr.sin_family = AF_INET;
-    receiverAddr.sin_port = htons(static_cast<uint16_t>(receiverPort));
+    receiverAddr.sin_port = htons(static_cast<uint16_t>(port));
 
     // Convert the receiver IP to binary form and store in receiverAddr
-    if (inet_pton(AF_INET, receiverIP.c_str(), &receiverAddr.sin_addr) <= 0) {
+    if (inet_pton(AF_INET, hostname.c_str(), &receiverAddr.sin_addr) <= 0) {
         close(sockfd);
         throw std::runtime_error("Invalid receiver IP address");
     }
@@ -238,40 +237,45 @@ bool Sender::isAckValid(const Packet& ackPacket) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 6) {
-        std::cerr << "Usage: ./Sender <receiver-IP> <receiver-port> <window-size> <input-file> <log>\n";
-        return 1;
-    }
+    cxxopts::Options options("wSender", "Reliable Sender");
+    options.add_options()
+        ("h, hostname", "The IP address of the host that wReceiver is running on.", cxxopts::value<std::string>())
+        ("p, port", "The port number on which wReceiver is listening.", cxxopts::value<int>())
+        ("w, window-size", "Maximum number of outstanding packets in the current window.", cxxopts::value<int>())
+        ("i, input-file", "Path to the file that has to be transferred. It can be a text file or binary file (e.g., image or video).", cxxopts::value<std::string>())
+        ("o, output-log", "The file path to which you should log the messages as described above.", cxxopts::value<std::string>());
 
-    // Parse arguments
-    std::string receiverIP = argv[1];
-    int receiverPort = std::atoi(argv[2]);
-    int windowSize = std::atoi(argv[3]);
-    std::string inputFile = argv[4];
-    std::string logFile = argv[5];
+    auto result = options.parse(argc, argv);
+
+    // Extract values
+    auto hostname = result["hostname"].as<std::string>();
+    auto port = result["port"].as<int>();
+    auto window_size = result["window-size"].as<int>();
+    auto input_file = result["input-file"].as<std::string>();
+    auto output_log = result["output-log"].as<std::string>();
 
     // Validate arguments
-    if (receiverPort <= 0 || receiverPort > 65535) {
+    if (port <= 0 || port > 65535) {
         std::cerr << "Error: Invalid port number. It must be between 1 and 65535.\n";
         return 1;
     }
-    if (windowSize <= 0) {
+    if (window_size <= 0) {
         std::cerr << "Error: Window size must be a positive integer.\n";
         return 1;
     }
 
     // Display parsed arguments for confirmation
-    std::cout << "Receiver IP: " << receiverIP << "\n"
-              << "Receiver Port: " << receiverPort << "\n"
-              << "Window Size: " << windowSize << "\n"
-              << "Input File: " << inputFile << "\n"
-              << "Log File: " << logFile << "\n";
+    spdlog::debug("hostname: {}", hostname);
+    spdlog::debug("port: {}", port);
+    spdlog::debug("window_size: {}", window_size);
+    spdlog::debug("input_file: {}", input_file);
+    spdlog::debug("output_log: {}", output_log);
 
     // Create Sender
     try {
-        Sender sender(receiverIP, receiverPort, windowSize, logFile);
+        Sender sender(hostname, port, window_size);
         sender.startConnection();
-        sender.sendData(inputFile);
+        sender.sendData(output_log);
         sender.endConnection();
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
@@ -280,84 +284,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
-// // Calculates the checksum for a packet (placeholder for actual CRC implementation)
-// unsigned int Sender::calculateChecksum(const Packet& packet) {
-//     // Use a provided CRC function or custom checksum calculation here
-//     return crc32(packet->data.data(), packet->data.size());  // Placeholder
-// }
-
-// void die(const char *s) {
-//     perror(s);
-//     exit(1);
-// }
-
-// void Sender::run() {
-//     // read input file
-//     readInputFile(inputFile);
-
-//     // set up UDP port
-//     createUDPSocket(receiverPort, receiverIP);
-
-//     // send start message
-//     Packet startPacket(0);
-//     sendPacket(startPacket);
-
-//     // start timer for start message
-//     start_time = get_current_time();
-
-//     // wait for start ACK
-
-//     // send packets
-    
-//     // send end message
-// }
-
-// void Sender::recvMsg() {
-//     struct sockaddr_in si_me, si_other;
-//     int s, recv_len;
-//     socklen_t slen = sizeof(si_other);
-//     std::vector<char> buf;
-    
-//     while(1) {
-//         // Try to receive some data, this is a blocking call
-//         if ((recv_len = recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen)) == -1) {
-//             die("recvfrom()");
-//         }
-
-//         // Print the details of the client/peer and the data received
-//         printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-//         printf("Data: %s\n" , buf);
-
-        
-//     }
-// }
-
-// void Sender::sendPacket(const Packet& packet) {
-//     // Calculate the total size: header + data
-//     size_t totalSize = sizeof(PacketHeader) + packet.data.size();
-
-//     // Create a buffer to hold the entire packet
-//     std::vector<char> buffer(totalSize);
-
-//     // Copy the header into the buffer
-//     std::memcpy(buffer.data(), &packet.header, sizeof(PacketHeader));
-
-//     // Copy the data into the buffer after the header
-//     std::memcpy(buffer.data() + sizeof(PacketHeader), packet.data.data(), packet.data.size());
-
-//     // Send the contiguous buffer over the socket
-//     sendto(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
-
-//     // Log and add to the window as before
-//     logger.logPacket(packet);
-//     window.addPacket(packet);
-// }
-
-// // Retransmit all packets currently in the window
-// void Sender::retransmitAll() {
-//     std::cout << "Retransmitting all packets in the window...\n";
-//     for (const Packet& packet : window.getPackets()) {
-//         retransmit(packet);
-//     }
-// }

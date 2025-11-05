@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/wReceiver.dir/Window.cpp.o CMakeFiles/wReceiver.dir/Receiver.cpp.o -o ../../bin/wReceiver  ../../_deps/spdlog-build/libspdlogd.a

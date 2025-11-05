@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/wSender.dir/Packet.cpp.o CMakeFiles/wSender.dir/Window.cpp.o CMakeFiles/wSender.dir/Sender.cpp.o -o ../../bin/wSender  ../../_deps/spdlog-build/libspdlogd.a

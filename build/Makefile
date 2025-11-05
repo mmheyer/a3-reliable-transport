@@ -139,7 +139,7 @@ wSender: cmake_check_build_system
 
 # fast build rule for target.
 wSender/fast:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSender.dir/build.make src/CMakeFiles/wSender.dir/build
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wSender.dir/build.make src/base/CMakeFiles/wSender.dir/build
 .PHONY : wSender/fast
 
 #=============================================================================
@@ -152,7 +152,7 @@ wReceiver: cmake_check_build_system
 
 # fast build rule for target.
 wReceiver/fast:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiver.dir/build.make src/CMakeFiles/wReceiver.dir/build
+	$(MAKE) $(MAKESILENT) -f src/base/CMakeFiles/wReceiver.dir/build.make src/base/CMakeFiles/wReceiver.dir/build
 .PHONY : wReceiver/fast
 
 #=============================================================================
@@ -165,7 +165,7 @@ wSenderOpt: cmake_check_build_system
 
 # fast build rule for target.
 wSenderOpt/fast:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wSenderOpt.dir/build.make src/CMakeFiles/wSenderOpt.dir/build
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wSenderOpt.dir/build.make src/opt/CMakeFiles/wSenderOpt.dir/build
 .PHONY : wSenderOpt/fast
 
 #=============================================================================
@@ -178,7 +178,7 @@ wReceiverOpt: cmake_check_build_system
 
 # fast build rule for target.
 wReceiverOpt/fast:
-	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/wReceiverOpt.dir/build.make src/CMakeFiles/wReceiverOpt.dir/build
+	$(MAKE) $(MAKESILENT) -f src/opt/CMakeFiles/wReceiverOpt.dir/build.make src/opt/CMakeFiles/wReceiverOpt.dir/build
 .PHONY : wReceiverOpt/fast
 
 # Help Target
